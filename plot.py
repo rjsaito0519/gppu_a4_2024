@@ -27,24 +27,49 @@ plt.rcParams['figure.subplot.bottom'] = 0.12
 
 
 data = np.genfromtxt("single.csv", delimiter=",")
-num = np.linspace(1500, 150000, 100)
 
 fig = plt.figure(figsize=(9, 8))
 ax1 = fig.add_subplot(211)
 ax2 = fig.add_subplot(212)
 
 model1 = lfm.LinearModel()
-params = model1.guess(x = num, data = data[:, 0] )
-result = model1.fit(x = num, data = data[:, 0], weights = 1/data[:, 1], params=params, method='leastsq')
+params = model1.guess(x = data[:, 0], data = data[:, 1] )
+result = model1.fit(x = data[:, 0], data = data[:, 1], weights = 1/data[:, 2], params=params, method='leastsq')
 print(result.fit_report())
 fit_x = np.linspace(1500, 150000, 2)
 fit_y = result.eval_components(x=fit_x)["linear"]
 
-ax1.errorbar(num, data[:, 0], yerr=data[:, 1], fmt = "s", capsize = 0, markeredgecolor = "k", ms = 5, ecolor='k', color = "C0", zorder = 5, elinewidth = 1., label = r"$N_{K}$")
+ax1.errorbar(data[:, 0], data[:, 1], yerr=data[:, 2], fmt = "s", capsize = 0, markeredgecolor = "k", ms = 5, ecolor='k', color = "C0", zorder = 5, elinewidth = 1., label = r"$N_{K}$")
 ax1.plot(fit_x, fit_y, color = "C2")
 
-ax2.errorbar(num, data[:, 2], yerr=data[:, 3], fmt = "s", capsize = 0, markeredgecolor = "k", ms = 5, ecolor='k', color = "C1", zorder = 5, elinewidth = 1., label = r"$N_{K}$")
+ax2.errorbar(data[:, 0], data[:, 3], yerr=data[:, 4], fmt = "s", capsize = 0, markeredgecolor = "k", ms = 5, ecolor='k', color = "C1", zorder = 5, elinewidth = 1., label = r"$N_{K}$")
 
 plt.subplots_adjust(left = 0.17, right = 0.98, top = 0.95, bottom = 0.12)
 # plt.savefig(f"./img/diff_cross_sec_statistics_comparison_explain.png", dpi=600, transparent=True)
 plt.show()
+
+
+
+data = np.genfromtxt("multi.csv", delimiter=",")
+data = data[ data[:, 1] == 256. ]
+
+fig = plt.figure(figsize=(9, 8))
+ax1 = fig.add_subplot(211)
+ax2 = fig.add_subplot(212)
+
+model1 = lfm.LinearModel()
+params = model1.guess(x = data[:, 0], data = data[:, 2] )
+result = model1.fit(x = data[:, 0], data = data[:, 2], weights = 1/data[:, 3], params=params, method='leastsq')
+print(result.fit_report())
+fit_x = np.linspace(1500, 150000, 2)
+fit_y = result.eval_components(x=fit_x)["linear"]
+
+ax1.errorbar(data[:, 0], data[:, 2], yerr=data[:, 3], fmt = "s", capsize = 0, markeredgecolor = "k", ms = 5, ecolor='k', color = "C0", zorder = 5, elinewidth = 1., label = r"$N_{K}$")
+ax1.plot(fit_x, fit_y, color = "C2")
+
+ax2.errorbar(data[:, 0], data[:, 4], yerr=data[:, 5], fmt = "s", capsize = 0, markeredgecolor = "k", ms = 5, ecolor='k', color = "C1", zorder = 5, elinewidth = 1., label = r"$N_{K}$")
+
+plt.subplots_adjust(left = 0.17, right = 0.98, top = 0.95, bottom = 0.12)
+# plt.savefig(f"./img/diff_cross_sec_statistics_comparison_explain.png", dpi=600, transparent=True)
+plt.show()
+
