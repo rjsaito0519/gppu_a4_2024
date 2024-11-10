@@ -26,7 +26,6 @@
 #include <TLatex.h>
 #include <TH2Poly.h>
 
-
 #include "include/ana_helper.hh"
 
 // CUDAカーネルの定義
@@ -45,7 +44,7 @@ __global__ void houghTransformKernel(int *houghSpace, const int *xData, const in
     }
 }
 
-Int_t test(int argc, char** argv) {
+int test(int argc, char** argv) {
 
     // -- check argument ------
     if (argc != 2) {
@@ -64,10 +63,10 @@ Int_t test(int argc, char** argv) {
         return;
     }
     TTreeReader reader("tpc", f);
-    Int_t tot_num = reader.GetEntries();
-    TTreeReaderValue<Int_t> runnum(reader, "runnum");
-    TTreeReaderValue<Int_t> evnum(reader, "evnum");
-    TTreeReaderValue<Int_t> nhTpc(reader, "nhTpc");
+    int tot_num = reader.GetEntries();
+    TTreeReaderValue<int> runnum(reader, "runnum");
+    TTreeReaderValue<int> evnum(reader, "evnum");
+    TTreeReaderValue<int> nhTpc(reader, "nhTpc");
     TTreeReaderValue<std::vector<int>> layerTpc(reader, "layerTpc");
     TTreeReaderValue<std::vector<int>> rowTpc(reader, "rowTpc");
     TTreeReaderValue<std::vector<double>> deTpc(reader, "deTpc");
@@ -90,12 +89,12 @@ Int_t test(int argc, char** argv) {
     // +-----------------------------------+
     reader.Restart();
     while (reader.Next()){
-        if (*nhTpc < 400) for (Int_t i = 0; i < *nhTpc; i++) h_tdc->Fill( (*tTpc)[i] );
+        if (*nhTpc < 400) for (int i = 0; i < *nhTpc; i++) h_tdc->Fill( (*tTpc)[i] );
     }
     TCanvas *c_tdc = new TCanvas("", "", 1000, 800);
-    std::vector<Double_t> tdc_fit_result = fit_tTpc(h_tdc, c_tdc, 1);
-    Double_t min_tdc_gate = tdc_fit_result[1] - 3.0*tdc_fit_result[2];
-    Double_t max_tdc_gate = tdc_fit_result[1] + 3.0*tdc_fit_result[2];
+    std::vector<double> tdc_fit_result = fit_tTpc(h_tdc, c_tdc, 1);
+    double min_tdc_gate = tdc_fit_result[1] - 3.0*tdc_fit_result[2];
+    double max_tdc_gate = tdc_fit_result[1] + 3.0*tdc_fit_result[2];
 
 
 

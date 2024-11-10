@@ -21,6 +21,7 @@ __global__ void houghTransformKernel(int *houghSpace, const int *xData, const in
     }
 }
 
+
 // データを読み込む関数
 void loadData(const char* filename, std::vector<int>& xData, std::vector<int>& yData) {
     TFile *file = TFile::Open(filename);
