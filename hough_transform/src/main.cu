@@ -113,6 +113,9 @@ int main(int argc, char** argv) {
             }
         }
         if ( positions.size() == 0) continue;
+        // -- tracking and cal dedx ----------
+        std::vector<int> track_ids = tracking(positions);
+    
     }
 
     // データサイズの指定
