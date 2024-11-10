@@ -45,7 +45,7 @@
 // }
 
 
-Int_t main(int argc, char** argv) {
+int main(int argc, char** argv) {
     // -- check argument ------
     if (argc != 2) {
         std::cerr << "Usage: " << argv[0] << " <path_to_root_file>" << std::endl;
