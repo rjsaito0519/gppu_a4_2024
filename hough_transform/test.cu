@@ -1,4 +1,5 @@
 #include <iostream>
+#include <iomanip>
 #include <vector>
 #include <cmath>
 #include <random>
@@ -16,6 +17,37 @@
 #include <TBox.h>
 
 
+
+
+// __Progress bar function______________________________
+void displayProgressBar(int current, int total) {
+    static int lastPercent = -1;
+    double progress = (double)current / total;
+    int percent = static_cast<int>(progress * 100);
+
+    // Update only when the percentage changes
+    if (percent != lastPercent) {
+        lastPercent = percent;
+        int barWidth = 50;  // Width of the progress bar
+
+        std::cout << "[";
+        int pos = barWidth * progress;
+        for (int i = 0; i < barWidth; ++i) {
+            if (i < pos) {
+                std::cout << "=";
+            } else if (i == pos) {
+                std::cout << ">";
+            } else {
+                std::cout << " ";
+            }
+        }
+        std::cout << "] " << std::fixed << std::setprecision(1) << (progress * 100.0) << " %\r";
+        std::cout.flush();  // Flush the output to display immediately
+    }
+}
+
+
+// __TDC Fitiing______________________________________________________
 std::vector<double> fit_tTpc(TH1D *h, TCanvas *c, int n_c) {
     // -- fit ------
     double peak_pos = h->GetBinCenter( h->GetMaximumBin() );
@@ -88,7 +120,7 @@ int main(int argc, char** argv) {
         return 1;
     }
     TTreeReader reader("tpc", f);
-    int tot_num = reader.GetEntries();
+    int total_entry = reader.GetEntries();
     TTreeReaderValue<int> runnum(reader, "runnum");
     TTreeReaderValue<int> evnum(reader, "evnum");
     TTreeReaderValue<int> nhTpc(reader, "nhTpc");
@@ -123,8 +155,10 @@ int main(int argc, char** argv) {
     double min_tdc_gate = tdc_fit_result[1] - 3.0*tdc_fit_result[2];
     double max_tdc_gate = tdc_fit_result[1] + 3.0*tdc_fit_result[2];
 
-
-
+    reader.Restart();
+    while (reader.Next()) {
+        displayProgressBar(*evnum, total_entry);
+    }
 
     // データサイズの指定
     int dataSize = 1000; // 任意のデータサイズ
