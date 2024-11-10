@@ -28,30 +28,29 @@
 
 #include "include/ana_helper.hh"
 
-// // CUDAカーネルの定義
-// __global__ void houghTransformKernel(int *houghSpace, const int *xData, const int *yData, int dataSize, int maxRho) {
-//     int index = blockIdx.x * blockDim.x + threadIdx.x;
-//     if (index < dataSize) {
-//         int x = xData[index];
-//         int y = yData[index];
-//         for (int theta = 0; theta < 180; ++theta) {
-//             float radian = theta * M_PI / 180.0;
-//             int rho = (int)(x * cos(radian) + y * sin(radian));
-//             if (rho >= 0 && rho < maxRho) {
-//                 atomicAdd(&houghSpace[theta * maxRho + rho], 1);
-//             }
-//         }
-//     }
-// }
+// CUDAカーネルの定義
+__global__ void houghTransformKernel(int *houghSpace, const int *xData, const int *yData, int dataSize, int maxRho) {
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (index < dataSize) {
+        int x = xData[index];
+        int y = yData[index];
+        for (int theta = 0; theta < 180; ++theta) {
+            float radian = theta * M_PI / 180.0;
+            int rho = (int)(x * cos(radian) + y * sin(radian));
+            if (rho >= 0 && rho < maxRho) {
+                atomicAdd(&houghSpace[theta * maxRho + rho], 1);
+            }
+        }
+    }
+}
 
 
-int main(int argc, char** argv) {
+Int_t main(int argc, char** argv) {
     // -- check argument ------
     if (argc != 2) {
         std::cerr << "Usage: " << argv[0] << " <path_to_root_file>" << std::endl;
         return 1;
     }
-
 
     // +----------------+
     // | load root file |
@@ -100,43 +99,56 @@ int main(int argc, char** argv) {
 
 
 
+    // データサイズの指定
+    int dataSize = 1000; // 任意のデータサイズ
+    std::vector<int> xData(dataSize);
+    std::vector<int> yData(dataSize);
 
+    // 乱数生成器の初期化
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dist(0, 1024); // 0から1024までの乱数
 
+    // xDataとyDataに乱数を詰める
+    for (int i = 0; i < dataSize; ++i) {
+        xData[i] = dist(gen);
+        yData[i] = dist(gen);
+    }
 
-    // // CUDAデバイスメモリを確保
-    // int *d_xData, *d_yData, *d_houghSpace;
-    // int maxRho = (int)hypot(1024, 1024); // 仮の最大範囲。適宜調整してください。
-    // cudaMalloc(&d_xData, dataSize * sizeof(int));
-    // cudaMalloc(&d_yData, dataSize * sizeof(int));
-    // cudaMalloc(&d_houghSpace, 180 * maxRho * sizeof(int));
+    // CUDAデバイスメモリを確保
+    int *d_xData, *d_yData, *d_houghSpace;
+    int maxRho = (int)hypot(1024, 1024); // 仮の最大範囲。適宜調整してください。
+    cudaMalloc(&d_xData, dataSize * sizeof(int));
+    cudaMalloc(&d_yData, dataSize * sizeof(int));
+    cudaMalloc(&d_houghSpace, 180 * maxRho * sizeof(int));
 
-    // // ホストからデバイスへデータをコピー
-    // cudaMemcpy(d_xData, xData.data(), dataSize * sizeof(int), cudaMemcpyHostToDevice);
-    // cudaMemcpy(d_yData, yData.data(), dataSize * sizeof(int), cudaMemcpyHostToDevice);
-    // cudaMemset(d_houghSpace, 0, 180 * maxRho * sizeof(int));
+    // ホストからデバイスへデータをコピー
+    cudaMemcpy(d_xData, xData.data(), dataSize * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_yData, yData.data(), dataSize * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemset(d_houghSpace, 0, 180 * maxRho * sizeof(int));
 
-    // // カーネルの起動
-    // int threadsPerBlock = 256;
-    // int blocksPerGrid = (dataSize + threadsPerBlock - 1) / threadsPerBlock;
-    // houghTransformKernel<<<blocksPerGrid, threadsPerBlock>>>(d_houghSpace, d_xData, d_yData, dataSize, maxRho);
+    // カーネルの起動
+    int threadsPerBlock = 256;
+    int blocksPerGrid = (dataSize + threadsPerBlock - 1) / threadsPerBlock;
+    houghTransformKernel<<<blocksPerGrid, threadsPerBlock>>>(d_houghSpace, d_xData, d_yData, dataSize, maxRho);
 
-    // // 結果をホストにコピー
-    // std::vector<int> houghSpace(180 * maxRho);
-    // cudaMemcpy(houghSpace.data(), d_houghSpace, 180 * maxRho * sizeof(int), cudaMemcpyDeviceToHost);
+    // 結果をホストにコピー
+    std::vector<int> houghSpace(180 * maxRho);
+    cudaMemcpy(houghSpace.data(), d_houghSpace, 180 * maxRho * sizeof(int), cudaMemcpyDeviceToHost);
 
-    // // 結果の一部を表示
-    // std::cout << "Hough Space (一部表示):" << std::endl;
-    // for (int i = 0; i < 10; ++i) {
-    //     for (int j = 0; j < 10; ++j) {
-    //         std::cout << houghSpace[i * maxRho + j] << " ";
-    //     }
-    //     std::cout << std::endl;
-    // }
+    // 結果の一部を表示
+    std::cout << "Hough Space (一部表示):" << std::endl;
+    for (int i = 0; i < 10; ++i) {
+        for (int j = 0; j < 10; ++j) {
+            std::cout << houghSpace[i * maxRho + j] << " ";
+        }
+        std::cout << std::endl;
+    }
 
-    // // デバイスメモリを解放
-    // cudaFree(d_xData);
-    // cudaFree(d_yData);
-    // cudaFree(d_houghSpace);
+    // デバイスメモリを解放
+    cudaFree(d_xData);
+    cudaFree(d_yData);
+    cudaFree(d_houghSpace);
 
     return 0;
 }
