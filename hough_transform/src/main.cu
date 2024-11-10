@@ -101,10 +101,10 @@ int main(int argc, char** argv) {
         
         // -- fill -----------------------
         if (nhit_threshold < *nhTpc) for (Int_t i = 0; i < *nhTpc; i++) {
-            pad = padHelper::getPadID((*layerTpc)[i], (*rowTpc)[i]);
-            isNoisy = std::binary_search(padHelper::noisy_pad.begin(), padHelper::noisy_pad.end(), pad);
+            int pad = padHelper::getPadID((*layerTpc)[i], (*rowTpc)[i]);
+            bool isNoisy = std::binary_search(padHelper::noisy_pad.begin(), padHelper::noisy_pad.end(), pad);
             if (isNoisy) continue;
-            if ( min_tTpc_gate < (*tTpc)[i] && (*tTpc)[i] < max_tTpc_gate ) { // normal
+            if ( min_tdc_gate < (*tTpc)[i] && (*tTpc)[i] < max_tdc_gate ) { // normal
             // if ( min_tTpc_gate < (*tTpc)[i] && (*tTpc)[i] < max_tTpc_gate && pad > 1343) {  // w/o TGT region
                 pad_and_de.emplace_back( pad, (*deTpc)[i] );
                 TVector3 pad_center_pos = padHelper::getPoint(pad);
