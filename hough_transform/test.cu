@@ -1,32 +1,19 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
-#include <TFile.h>
-#include <TTree.h>
-#include <cuda_runtime.h>
 #include <random>
+#include <cuda_runtime.h>
 
 #include <TFile.h>
 #include <TTree.h>
-#include <TEventList.h>
-#include <TMath.h>
-#include <TROOT.h>
-#include <TApplication.h>
+#include <TTreeReader.h>
+#include <TTreeReaderValue.h>
 #include <TH1.h>
-#include <TH2.h>
 #include <TCanvas.h>
 #include <TF1.h>
-#include <TColor.h>
-#include <TGraph.h>
-#include <TStyle.h>
-#include <TGaxis.h>
-#include <TSpectrum.h>
-#include <TPolyMarker.h>
-#include <TTreeReader.h>
-#include <TParticle.h>
-#include <TLatex.h>
-#include <TH2Poly.h>
-
+#include <TApplication.h>
+#include <TMath.h>
+#include <TBox.h>
 
 
 std::vector<double> fit_tTpc(TH1D *h, TCanvas *c, int n_c) {
