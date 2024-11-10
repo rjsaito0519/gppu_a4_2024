@@ -28,21 +28,21 @@
 
 #include "include/ana_helper.hh"
 
-// CUDAカーネルの定義
-__global__ void houghTransformKernel(int *houghSpace, const int *xData, const int *yData, int dataSize, int maxRho) {
-    int index = blockIdx.x * blockDim.x + threadIdx.x;
-    if (index < dataSize) {
-        int x = xData[index];
-        int y = yData[index];
-        for (int theta = 0; theta < 180; ++theta) {
-            float radian = theta * M_PI / 180.0;
-            int rho = (int)(x * cos(radian) + y * sin(radian));
-            if (rho >= 0 && rho < maxRho) {
-                atomicAdd(&houghSpace[theta * maxRho + rho], 1);
-            }
-        }
-    }
-}
+// // CUDAカーネルの定義
+// __global__ void houghTransformKernel(int *houghSpace, const int *xData, const int *yData, int dataSize, int maxRho) {
+//     int index = blockIdx.x * blockDim.x + threadIdx.x;
+//     if (index < dataSize) {
+//         int x = xData[index];
+//         int y = yData[index];
+//         for (int theta = 0; theta < 180; ++theta) {
+//             float radian = theta * M_PI / 180.0;
+//             int rho = (int)(x * cos(radian) + y * sin(radian));
+//             if (rho >= 0 && rho < maxRho) {
+//                 atomicAdd(&houghSpace[theta * maxRho + rho], 1);
+//             }
+//         }
+//     }
+// }
 
 
 Int_t main(int argc, char** argv) {
