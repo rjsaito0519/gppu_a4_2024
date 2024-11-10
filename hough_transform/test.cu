@@ -45,7 +45,7 @@ __global__ void houghTransformKernel(int *houghSpace, const int *xData, const in
     }
 }
 
-Int_t main(int argc, char** argv) {
+Int_t test(int argc, char** argv) {
 
     // -- check argument ------
     if (argc != 2) {
