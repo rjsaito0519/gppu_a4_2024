@@ -22,6 +22,7 @@
 #include <cuda_runtime.h>
 #include "progress_bar.h"
 #include "fit_tTpc.h"
+#include "pad_helper.h"
 
 // CUDAカーネルの定義
 __global__ void houghTransformKernel(int *houghSpace, const int *xData, const int *yData, int dataSize, int maxRho) {
