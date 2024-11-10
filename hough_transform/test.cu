@@ -59,8 +59,8 @@ Int_t main(int argc, char** argv) {
     const TString root_file_path = argv[1];
 
     auto *f = new TFile(root_file_path.Data());
-    if (!file || f->IsZombie()) {
-        std::cerr << "Error: Could not open file " << filename << std::endl;
+    if (!f || f->IsZombie()) {
+        std::cerr << "Error: Could not open file : " << root_file_path << std::endl;
         return;
     }
     TTreeReader reader("tpc", f);
