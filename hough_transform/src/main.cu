@@ -4,7 +4,6 @@
 #include <cmath>
 #include <random>
 #include <cuda_runtime.h>
-
 #include <TFile.h>
 #include <TTree.h>
 #include <TTreeReader.h>
@@ -16,13 +15,10 @@
 #include <TMath.h>
 #include <TBox.h>
 
-#include <iostream>
-#include <vector>
-#include <random>
-#include <cuda_runtime.h>
 #include "progress_bar.h"
 #include "fit_tTpc.h"
 #include "pad_helper.h"
+
 
 // CUDAカーネルの定義
 __global__ void houghTransformKernel(int *houghSpace, const int *xData, const int *yData, int dataSize, int maxRho) {
@@ -95,11 +91,14 @@ int main(int argc, char** argv) {
     // +---------------------------------+
     // | detect track by hough transform |
     // +---------------------------------+
+    int nhit_threshold = 0;
+    double space_threshold = 30.;
+
     reader.Restart();
     while (reader.Next()) { displayProgressBar( *evnum+1, total_entry);
-
-        pad_and_de.clear();
-        positions.clear();
+        std::vector<TVector3> positions;
+        std::vector<std::pair<int, double>> pad_and_de;
+        
         // -- fill -----------------------
         if (nhit_threshold < *nhTpc) for (Int_t i = 0; i < *nhTpc; i++) {
             pad = padHelper::getPadID((*layerTpc)[i], (*rowTpc)[i]);

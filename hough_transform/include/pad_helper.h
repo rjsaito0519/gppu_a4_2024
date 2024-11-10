@@ -11,7 +11,7 @@
 
 namespace padHelper
 {
-    static const std::vector<Int_t> noisy_pad{ // 1 origin
+    static const std::vector<int> noisy_pad{ // 1 origin
         0, 50, 56, 57, 58, 59, 68, 72, 73, 74, 76, 110, 108, 109, 137, 139, 183, 224, 226, 282,
         337, 335, 472, 470, 552, 553, 631, 629, 723, 651, 814, 812, 854, 855, 856, 857, 858,
         859, 860, 861, 862, 863, 864, 918, 919, 1042, 1044, 1058, 1059, 1060, 1061, 1062, 1063,
@@ -53,8 +53,8 @@ namespace padHelper
         5721, 5740, 5741, 5758, 5759, 5760, 5761, 5762, 5766, 5767, 5768
     };
 
-    static const Int_t NumOfLayersTPC = 32;
-    static const Int_t NoiseChannel[NumOfLayersTPC][42] =
+    static const int NumOfLayersTPC = 32;
+    static const int NoiseChannel[NumOfLayersTPC][42] =
     {
         {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},//0
         {8,9,10,20,24,25,26,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
@@ -92,7 +92,7 @@ namespace padHelper
 
     //#PadID is defined as 0 origin
     //#OfPad #division #radius padLength
-    static const Double_t padParameter[32][6] =
+    static const double padParameter[32][6] =
     {
         {0, 48,    14.75, 48, 0,  9.},
         {1, 48,    24.25, 48, 0,  9.},
@@ -128,36 +128,36 @@ namespace padHelper
         {31,90,     384.5,867, 0, 12.5}
     };
 
-    inline Double_t getDTheta(Int_t layerID)
+    inline double getDTheta(int layerID)
     {
         return (360. / padParameter[layerID][3]);
     }
 
-    inline Double_t getsTheta(Int_t layerID)
+    inline double getsTheta(int layerID)
     {
-        Double_t sTheta = 180. - (360. / padParameter[layerID][3]) * padParameter[layerID][1] / 2.;
+        double sTheta = 180. - (360. / padParameter[layerID][3]) * padParameter[layerID][1] / 2.;
         return sTheta;
     }
 
-    inline Double_t getRadius(Int_t layerID)
+    inline double getRadius(int layerID)
     {
         return padParameter[layerID][2];
     }
 
-    inline Double_t getLength(Int_t layerID)
+    inline double getLength(int layerID)
     {
         return padParameter[layerID][5];
     }
 
-    inline Int_t getPadID(Int_t layerID, Int_t rowID)
+    inline int getPadID(int layerID, int rowID)
     {
-        Int_t padID = 0;
+        int padID = 0;
         for (int layi = 0; layi < layerID; layi++) padID += padParameter[layi][1];
         padID += rowID;
         return padID;
     }
 
-    inline Int_t getLayerID(Int_t padID)
+    inline int getLayerID(int padID)
     {
         //    padID-=1;
         int layer;
@@ -170,7 +170,7 @@ namespace padHelper
         return layer;
     }
 
-    inline Int_t getRowID(Int_t padID)
+    inline int getRowID(int padID)
     {
         //    padID-=1;
         int layer, row;
@@ -232,7 +232,7 @@ namespace padHelper
         return getPadID(layer, row);
     }
 
-    inline Double_t getTheta(Int_t padID)
+    inline double getTheta(int padID)
     {
         //    padID-=1;
         int layer, row;
@@ -243,12 +243,12 @@ namespace padHelper
             sum += padParameter[layer][1];
         }
         row = padID - sum;
-        Double_t sTheta = 180. - (360. / padParameter[layer][3]) * padParameter[layer][1] / 2.;
-        Double_t theta = sTheta + (row + 0.5) * (360. - 2 * sTheta) / padParameter[layer][1];
+        double sTheta = 180. - (360. / padParameter[layer][3]) * padParameter[layer][1] / 2.;
+        double theta = sTheta + (row + 0.5) * (360. - 2 * sTheta) / padParameter[layer][1];
         return theta;
     }
 
-    inline Double_t getR(Int_t padID)
+    inline double getR(int padID)
     {
         //    padID-=1;
         int layer;//, row;
@@ -259,7 +259,7 @@ namespace padHelper
             sum += padParameter[layer][1];
         }
         //row = padID - sum;
-        Double_t R = padParameter[layer][2];
+        double R = padParameter[layer][2];
         return R;
     }
 
@@ -286,7 +286,7 @@ namespace padHelper
         else
         {
             double x, z;
-            Double_t sTheta = 180. - (360. / padParameter[layer][3]) * padParameter[layer][1] / 2.;
+            double sTheta = 180. - (360. / padParameter[layer][3]) * padParameter[layer][1] / 2.;
             x = padParameter[layer][2] * -sin((360. / padParameter[layer][3]) * TMath::Pi() / 180. * (row + 0.5) + sTheta * TMath::Pi() / 180.);
             z = padParameter[layer][2] * -cos((360. / padParameter[layer][3]) * TMath::Pi() / 180. * (row + 0.5) + sTheta * TMath::Pi() / 180.) - 143.0;
             result.SetX(x);
