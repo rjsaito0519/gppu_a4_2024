@@ -85,7 +85,7 @@ int test(int argc, char** argv) {
     auto *f = new TFile(root_file_path.Data());
     if (!f || f->IsZombie()) {
         std::cerr << "Error: Could not open file : " << root_file_path << std::endl;
-        return;
+        return 1;
     }
     TTreeReader reader("tpc", f);
     int tot_num = reader.GetEntries();
