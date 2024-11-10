@@ -46,17 +46,20 @@ __global__ void houghTransformKernel(int *houghSpace, const int *xData, const in
 }
 
 
+// Int_t main(int argc, char** argv) {
 Int_t main(int argc, char** argv) {
-    // -- check argument ------
-    if (argc != 2) {
-        std::cerr << "Usage: " << argv[0] << " <path_to_root_file>" << std::endl;
-        return 1;
-    }
+
+    // // -- check argument ------
+    // if (argc != 2) {
+    //     std::cerr << "Usage: " << argv[0] << " <path_to_root_file>" << std::endl;
+    //     return 1;
+    // }
 
     // +----------------+
     // | load root file |
     // +----------------+
-    const TString root_file_path = argv[1];
+    // const TString root_file_path = argv[1];
+    const TString root_file_path = "./";
 
     auto *f = new TFile(root_file_path.Data());
     if (!f || f->IsZombie()) {
