@@ -48,7 +48,7 @@ void displayProgressBar(int current, int total) {
 
 
 // __TDC Fitiing______________________________________________________
-std::vector<double> fit_tTpc(TH1D *h, TCanvas *c, int n_c) {
+std::vector<double> fit_tTpc(TH1D *h) {
     // -- fit ------
     double peak_pos = h->GetBinCenter( h->GetMaximumBin() );
     double range_min = peak_pos - 30.0;
@@ -65,7 +65,8 @@ std::vector<double> fit_tTpc(TH1D *h, TCanvas *c, int n_c) {
     for (int i = 0; i < 4; i++) result.push_back(fit_f->GetParameter(i));
 
     // -- draw ------
-    c->cd(n_c);
+    TCanvas *c = new TCanvas("", "", 800, 800);
+    c->cd(1);
     h->GetXaxis()->SetRangeUser(result[1] - 5.0*result[2], result[1] + 5.0*result[2]);
     h->Draw();
     fit_f->Draw("same");
@@ -82,6 +83,12 @@ std::vector<double> fit_tTpc(TH1D *h, TCanvas *c, int n_c) {
     box->Draw("same");
     c->Update();
 
+    // -- save and delete -----
+    c->SaveAs("tdc.pdf");
+    delete c;
+    delete fit_f;
+    delete box;
+    
     return result;
 }
 
@@ -148,16 +155,13 @@ int main(int argc, char** argv) {
     while (reader.Next()){
         if (*nhTpc < 400) for (int i = 0; i < *nhTpc; i++) h_tdc->Fill( (*tTpc)[i] );
     }
-    TCanvas *c_tdc = new TCanvas("", "", 1000, 800);
-    TApplication *theApp = new TApplication("App", &argc, argv);
-    std::vector<double> tdc_fit_result = fit_tTpc(h_tdc, c_tdc, 1);
-    theApp->Run();
+    std::vector<double> tdc_fit_result = fit_tTpc(h_tdc);
     double min_tdc_gate = tdc_fit_result[1] - 3.0*tdc_fit_result[2];
     double max_tdc_gate = tdc_fit_result[1] + 3.0*tdc_fit_result[2];
 
     reader.Restart();
     while (reader.Next()) {
-        displayProgressBar(*evnum, total_entry);
+        displayProgressBar( *evnum+1, total_entry);
     }
 
     // データサイズの指定
