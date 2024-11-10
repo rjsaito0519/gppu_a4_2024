@@ -16,81 +16,12 @@
 #include <TMath.h>
 #include <TBox.h>
 
-
-
-
-// __Progress bar function______________________________
-void displayProgressBar(int current, int total) {
-    static int lastPercent = -1;
-    double progress = (double)current / total;
-    int percent = static_cast<int>(progress * 100);
-
-    // Update only when the percentage changes
-    if (percent != lastPercent) {
-        lastPercent = percent;
-        int barWidth = 50;  // Width of the progress bar
-
-        std::cout << "[";
-        int pos = barWidth * progress;
-        for (int i = 0; i < barWidth; ++i) {
-            if (i < pos) {
-                std::cout << "=";
-            } else if (i == pos) {
-                std::cout << ">";
-            } else {
-                std::cout << " ";
-            }
-        }
-        std::cout << "] " << std::fixed << std::setprecision(1) << (progress * 100.0) << " %\r";
-        std::cout.flush();  // Flush the output to display immediately
-    }
-}
-
-
-// __TDC Fitiing______________________________________________________
-std::vector<double> fit_tTpc(TH1D *h) {
-    // -- fit ------
-    double peak_pos = h->GetBinCenter( h->GetMaximumBin() );
-    double range_min = peak_pos - 30.0;
-    double range_max = peak_pos + 30.0;    
-    TF1 *fit_f = new TF1(Form("gauss_%s", h->GetName()), "[0]*TMath::Gaus(x,[1],[2], true) + [3]", range_min, range_max);
-    fit_f->SetParameter(1, peak_pos);
-    fit_f->SetParameter(2, 5);
-    fit_f->SetParameter(3, h->GetBinContent(static_cast<int>(range_min)) );
-    fit_f->SetNpx(1000);
-    fit_f->SetLineColor(kOrange);
-    fit_f->SetLineWidth( 2 ); // 線の太さ変更
-    h->Fit(fit_f, "0", "", range_min, range_max);
-    std::vector<double> result;
-    for (int i = 0; i < 4; i++) result.push_back(fit_f->GetParameter(i));
-
-    // -- draw ------
-    TCanvas *c = new TCanvas("", "", 800, 800);
-    c->cd(1);
-    h->GetXaxis()->SetRangeUser(result[1] - 5.0*result[2], result[1] + 5.0*result[2]);
-    h->Draw();
-    fit_f->Draw("same");
-
-    // -- draw range ------
-    double x1 = result[1] - 3.0 * result[2];
-    double x2 = result[1] + 3.0 * result[2];
-    double y1 = 0;
-    double y2 = h->GetBinContent(h->GetMaximumBin());
-
-    TBox *box = new TBox(x1, y1, x2, y2);
-    box->SetFillColor(kBlue);
-    box->SetFillStyle(3353);
-    box->Draw("same");
-    c->Update();
-
-    // -- save and delete -----
-    c->SaveAs("tdc.pdf");
-    delete c;
-    delete fit_f;
-    delete box;
-    
-    return result;
-}
+#include <iostream>
+#include <vector>
+#include <random>
+#include <cuda_runtime.h>
+#include "progress_bar.h"
+#include "fit_tTpc.h"
 
 // CUDAカーネルの定義
 __global__ void houghTransformKernel(int *houghSpace, const int *xData, const int *yData, int dataSize, int maxRho) {
@@ -159,9 +90,29 @@ int main(int argc, char** argv) {
     double min_tdc_gate = tdc_fit_result[1] - 3.0*tdc_fit_result[2];
     double max_tdc_gate = tdc_fit_result[1] + 3.0*tdc_fit_result[2];
 
+
+    // +---------------------------------+
+    // | detect track by hough transform |
+    // +---------------------------------+
     reader.Restart();
-    while (reader.Next()) {
-        displayProgressBar( *evnum+1, total_entry);
+    while (reader.Next()) { displayProgressBar( *evnum+1, total_entry);
+
+        pad_and_de.clear();
+        positions.clear();
+        // -- fill -----------------------
+        if (nhit_threshold < *nhTpc) for (Int_t i = 0; i < *nhTpc; i++) {
+            pad = padHelper::getPadID((*layerTpc)[i], (*rowTpc)[i]);
+            isNoisy = std::binary_search(padHelper::noisy_pad.begin(), padHelper::noisy_pad.end(), pad);
+            if (isNoisy) continue;
+            if ( min_tTpc_gate < (*tTpc)[i] && (*tTpc)[i] < max_tTpc_gate ) { // normal
+            // if ( min_tTpc_gate < (*tTpc)[i] && (*tTpc)[i] < max_tTpc_gate && pad > 1343) {  // w/o TGT region
+                pad_and_de.emplace_back( pad, (*deTpc)[i] );
+                TVector3 pad_center_pos = padHelper::getPoint(pad);
+                pad_center_pos.SetY( (*tTpc)[i] );
+                positions.push_back( pad_center_pos );
+            }
+        }
+        if ( positions.size() == 0) continue;
     }
 
     // データサイズの指定
