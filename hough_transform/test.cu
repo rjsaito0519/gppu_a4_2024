@@ -27,7 +27,44 @@
 #include <TLatex.h>
 #include <TH2Poly.h>
 
-#include "include/ana_helper.hh"
+
+
+std::vector<double> fit_tTpc(TH1D *h, TCanvas *c, int n_c) {
+    // -- fit ------
+    double peak_pos = h->GetBinCenter( h->GetMaximumBin() );
+    double range_min = peak_pos - 30.0;
+    double range_max = peak_pos + 30.0;    
+    TF1 *fit_f = new TF1(Form("gauss_%s", h->GetName()), "[0]*TMath::Gaus(x,[1],[2], true) + [3]", range_min, range_max);
+    fit_f->SetParameter(1, peak_pos);
+    fit_f->SetParameter(2, 5);
+    fit_f->SetParameter(3, h->GetBinContent(static_cast<int>(range_min)) );
+    fit_f->SetNpx(1000);
+    fit_f->SetLineColor(kOrange);
+    fit_f->SetLineWidth( 2 ); // 線の太さ変更
+    h->Fit(fit_f, "0", "", range_min, range_max);
+    std::vector<double> result;
+    for (int i = 0; i < 4; i++) result.push_back(fit_f->GetParameter(i));
+
+    // -- draw ------
+    c->cd(n_c);
+    h->GetXaxis()->SetRangeUser(result[1] - 5.0*result[2], result[1] + 5.0*result[2]);
+    h->Draw();
+    fit_f->Draw("same");
+
+    // -- draw range ------
+    double x1 = result[1] - 3.0 * result[2];
+    double x2 = result[1] + 3.0 * result[2];
+    double y1 = 0;
+    double y2 = h->GetBinContent(h->GetMaximumBin());
+
+    TBox *box = new TBox(x1, y1, x2, y2);
+    box->SetFillColor(kBlue);
+    box->SetFillStyle(3353);
+    box->Draw("same");
+    c->Update();
+
+    return result;
+}
 
 // CUDAカーネルの定義
 __global__ void houghTransformKernel(int *houghSpace, const int *xData, const int *yData, int dataSize, int maxRho) {
@@ -47,55 +84,57 @@ __global__ void houghTransformKernel(int *houghSpace, const int *xData, const in
 
 int test(int argc, char** argv) {
 
-    // // -- check argument ------
-    // if (argc != 2) {
-    //     std::cerr << "Usage: " << argv[0] << " <path_to_root_file>" << std::endl;
-    //     return 1;
-    // }
+    // -- check argument ------
+    if (argc != 2) {
+        std::cerr << "Usage: " << argv[0] << " <path_to_root_file>" << std::endl;
+        return 1;
+    }
 
-    // // +----------------+
-    // // | load root file |
-    // // +----------------+
-    // const TString root_file_path = argv[1];
+    // +----------------+
+    // | load root file |
+    // +----------------+
+    const TString root_file_path = argv[1];
 
-    // auto *f = new TFile(root_file_path.Data());
-    // if (!f || f->IsZombie()) {
-    //     std::cerr << "Error: Could not open file : " << root_file_path << std::endl;
-    //     return;
-    // }
-    // TTreeReader reader("tpc", f);
-    // int tot_num = reader.GetEntries();
-    // TTreeReaderValue<int> runnum(reader, "runnum");
-    // TTreeReaderValue<int> evnum(reader, "evnum");
-    // TTreeReaderValue<int> nhTpc(reader, "nhTpc");
-    // TTreeReaderValue<std::vector<int>> layerTpc(reader, "layerTpc");
-    // TTreeReaderValue<std::vector<int>> rowTpc(reader, "rowTpc");
-    // TTreeReaderValue<std::vector<double>> deTpc(reader, "deTpc");
-    // TTreeReaderValue<std::vector<double>> tTpc(reader, "tTpc");
+    auto *f = new TFile(root_file_path.Data());
+    if (!f || f->IsZombie()) {
+        std::cerr << "Error: Could not open file : " << root_file_path << std::endl;
+        return;
+    }
+    TTreeReader reader("tpc", f);
+    int tot_num = reader.GetEntries();
+    TTreeReaderValue<int> runnum(reader, "runnum");
+    TTreeReaderValue<int> evnum(reader, "evnum");
+    TTreeReaderValue<int> nhTpc(reader, "nhTpc");
+    TTreeReaderValue<std::vector<int>> layerTpc(reader, "layerTpc");
+    TTreeReaderValue<std::vector<int>> rowTpc(reader, "rowTpc");
+    TTreeReaderValue<std::vector<double>> deTpc(reader, "deTpc");
+    TTreeReaderValue<std::vector<double>> tTpc(reader, "tTpc");
     
-    // // +-------------------+
-    // // | prepare histogram |
-    // // +-------------------+
-    // auto h_tdc = new TH1D("tdc", "tdc", 2000, 0.0, 200.0);
-    // // auto hdedx = new TH1D("dedx", "", 400, 0, 200);
-    // // auto hn = new TH1D("n", "", 500, 0, 500);
-    // // auto halpha = new TH1D("alpha", "", 500, -10, 10);
+    // +-------------------+
+    // | prepare histogram |
+    // +-------------------+
+    auto h_tdc = new TH1D("tdc", "tdc", 2000, 0.0, 200.0);
+    // auto hdedx = new TH1D("dedx", "", 400, 0, 200);
+    // auto hn = new TH1D("n", "", 500, 0, 500);
+    // auto halpha = new TH1D("alpha", "", 500, -10, 10);
     
-    // // auto hdedx_vs_redchi = new TH2D("dedx_vs_redchi", "", 400, 0, 200, 1000, 0, 1000);
-    // // auto hdedx_vs_n = new TH2D("dedx_vs_n", "", 400, 0, 200, 500, 0, 500);
+    // auto hdedx_vs_redchi = new TH2D("dedx_vs_redchi", "", 400, 0, 200, 1000, 0, 1000);
+    // auto hdedx_vs_n = new TH2D("dedx_vs_n", "", 400, 0, 200, 500, 0, 500);
 
 
-    // // +-----------------------------------+
-    // // | fit tdc and determine time window |
-    // // +-----------------------------------+
-    // reader.Restart();
-    // while (reader.Next()){
-    //     if (*nhTpc < 400) for (int i = 0; i < *nhTpc; i++) h_tdc->Fill( (*tTpc)[i] );
-    // }
-    // TCanvas *c_tdc = new TCanvas("", "", 1000, 800);
-    // std::vector<double> tdc_fit_result = fit_tTpc(h_tdc, c_tdc, 1);
-    // double min_tdc_gate = tdc_fit_result[1] - 3.0*tdc_fit_result[2];
-    // double max_tdc_gate = tdc_fit_result[1] + 3.0*tdc_fit_result[2];
+    // +-----------------------------------+
+    // | fit tdc and determine time window |
+    // +-----------------------------------+
+    reader.Restart();
+    while (reader.Next()){
+        if (*nhTpc < 400) for (int i = 0; i < *nhTpc; i++) h_tdc->Fill( (*tTpc)[i] );
+    }
+    TCanvas *c_tdc = new TCanvas("", "", 1000, 800);
+    TApplication *theApp = new TApplication("App", &argc, argv);
+    std::vector<double> tdc_fit_result = fit_tTpc(h_tdc, c_tdc, 1);
+    theApp->Run();
+    double min_tdc_gate = tdc_fit_result[1] - 3.0*tdc_fit_result[2];
+    double max_tdc_gate = tdc_fit_result[1] + 3.0*tdc_fit_result[2];
 
 
 
