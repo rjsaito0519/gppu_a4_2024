@@ -4,6 +4,7 @@
 #include <TFile.h>
 #include <TTree.h>
 #include <cuda_runtime.h>
+#include <random>
 
 #include <TFile.h>
 #include <TTree.h>
@@ -46,55 +47,55 @@ __global__ void houghTransformKernel(int *houghSpace, const int *xData, const in
 
 int test(int argc, char** argv) {
 
-    // -- check argument ------
-    if (argc != 2) {
-        std::cerr << "Usage: " << argv[0] << " <path_to_root_file>" << std::endl;
-        return 1;
-    }
+    // // -- check argument ------
+    // if (argc != 2) {
+    //     std::cerr << "Usage: " << argv[0] << " <path_to_root_file>" << std::endl;
+    //     return 1;
+    // }
 
-    // +----------------+
-    // | load root file |
-    // +----------------+
-    const TString root_file_path = argv[1];
+    // // +----------------+
+    // // | load root file |
+    // // +----------------+
+    // const TString root_file_path = argv[1];
 
-    auto *f = new TFile(root_file_path.Data());
-    if (!f || f->IsZombie()) {
-        std::cerr << "Error: Could not open file : " << root_file_path << std::endl;
-        return;
-    }
-    TTreeReader reader("tpc", f);
-    int tot_num = reader.GetEntries();
-    TTreeReaderValue<int> runnum(reader, "runnum");
-    TTreeReaderValue<int> evnum(reader, "evnum");
-    TTreeReaderValue<int> nhTpc(reader, "nhTpc");
-    TTreeReaderValue<std::vector<int>> layerTpc(reader, "layerTpc");
-    TTreeReaderValue<std::vector<int>> rowTpc(reader, "rowTpc");
-    TTreeReaderValue<std::vector<double>> deTpc(reader, "deTpc");
-    TTreeReaderValue<std::vector<double>> tTpc(reader, "tTpc");
+    // auto *f = new TFile(root_file_path.Data());
+    // if (!f || f->IsZombie()) {
+    //     std::cerr << "Error: Could not open file : " << root_file_path << std::endl;
+    //     return;
+    // }
+    // TTreeReader reader("tpc", f);
+    // int tot_num = reader.GetEntries();
+    // TTreeReaderValue<int> runnum(reader, "runnum");
+    // TTreeReaderValue<int> evnum(reader, "evnum");
+    // TTreeReaderValue<int> nhTpc(reader, "nhTpc");
+    // TTreeReaderValue<std::vector<int>> layerTpc(reader, "layerTpc");
+    // TTreeReaderValue<std::vector<int>> rowTpc(reader, "rowTpc");
+    // TTreeReaderValue<std::vector<double>> deTpc(reader, "deTpc");
+    // TTreeReaderValue<std::vector<double>> tTpc(reader, "tTpc");
     
-    // +-------------------+
-    // | prepare histogram |
-    // +-------------------+
-    auto h_tdc = new TH1D("tdc", "tdc", 2000, 0.0, 200.0);
-    // auto hdedx = new TH1D("dedx", "", 400, 0, 200);
-    // auto hn = new TH1D("n", "", 500, 0, 500);
-    // auto halpha = new TH1D("alpha", "", 500, -10, 10);
+    // // +-------------------+
+    // // | prepare histogram |
+    // // +-------------------+
+    // auto h_tdc = new TH1D("tdc", "tdc", 2000, 0.0, 200.0);
+    // // auto hdedx = new TH1D("dedx", "", 400, 0, 200);
+    // // auto hn = new TH1D("n", "", 500, 0, 500);
+    // // auto halpha = new TH1D("alpha", "", 500, -10, 10);
     
-    // auto hdedx_vs_redchi = new TH2D("dedx_vs_redchi", "", 400, 0, 200, 1000, 0, 1000);
-    // auto hdedx_vs_n = new TH2D("dedx_vs_n", "", 400, 0, 200, 500, 0, 500);
+    // // auto hdedx_vs_redchi = new TH2D("dedx_vs_redchi", "", 400, 0, 200, 1000, 0, 1000);
+    // // auto hdedx_vs_n = new TH2D("dedx_vs_n", "", 400, 0, 200, 500, 0, 500);
 
 
-    // +-----------------------------------+
-    // | fit tdc and determine time window |
-    // +-----------------------------------+
-    reader.Restart();
-    while (reader.Next()){
-        if (*nhTpc < 400) for (int i = 0; i < *nhTpc; i++) h_tdc->Fill( (*tTpc)[i] );
-    }
-    TCanvas *c_tdc = new TCanvas("", "", 1000, 800);
-    std::vector<double> tdc_fit_result = fit_tTpc(h_tdc, c_tdc, 1);
-    double min_tdc_gate = tdc_fit_result[1] - 3.0*tdc_fit_result[2];
-    double max_tdc_gate = tdc_fit_result[1] + 3.0*tdc_fit_result[2];
+    // // +-----------------------------------+
+    // // | fit tdc and determine time window |
+    // // +-----------------------------------+
+    // reader.Restart();
+    // while (reader.Next()){
+    //     if (*nhTpc < 400) for (int i = 0; i < *nhTpc; i++) h_tdc->Fill( (*tTpc)[i] );
+    // }
+    // TCanvas *c_tdc = new TCanvas("", "", 1000, 800);
+    // std::vector<double> tdc_fit_result = fit_tTpc(h_tdc, c_tdc, 1);
+    // double min_tdc_gate = tdc_fit_result[1] - 3.0*tdc_fit_result[2];
+    // double max_tdc_gate = tdc_fit_result[1] + 3.0*tdc_fit_result[2];
 
 
 
