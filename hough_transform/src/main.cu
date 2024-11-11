@@ -29,10 +29,9 @@ __global__ void houghTransformKernel(int *hough_space, const double *x_data, con
 
         for (int theta = 0; theta <= 180; ++theta) {
             double radian = theta * M_PI / 180.0;
-            int rho = static_cast<int>( round(z*cosf(radian) + x*sinf(radian) ) );
+            int rho = static_cast<int>( round(z*cosf(radian) + x*sinf(radian)) + (n_rho-1)/2 );
             if (rho >= 0 && rho < n_rho) {
-                int hough_index = theta * n_rho + rho + static_cast<int>((n_rho-1)/2);
-                atomicAdd(&hough_space[hough_index], 1);
+                atomicAdd(&hough_space[theta * n_rho + rho], 1);
             }
         }
     }
