@@ -88,7 +88,7 @@ std::vector<int> tracking(const std::vector<TVector3>& positions)
         int max_index = std::distance(host_hough_space.begin(), max_it);
         int max_theta = max_index / n_rho;
         int max_rho   = max_index % n_rho - static_cast<int>((n_rho-1)/2);
-        std::cout << max_index << ", " << max_theta << ", " << max_rho << std::endl;
+        std::cout << track_id << ": " << max_index  << "," << n_rho << ", " << max_theta << ", " << max_rho << std::endl;
 
         // -- event selection ----------
         double bin_diff;
