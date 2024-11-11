@@ -35,14 +35,14 @@ __global__ void houghTransformKernel(int *hough_space, const double *x_data, con
     }
 }
 
-std::vector<std:vector<int>> tracking(const std::vector<TVector3>& pos_container)
+std::vector<std::vector<int>> tracking(const std::vector<TVector3>& pos_container)
 {
     // --  prepare ----------
     int max_iter = pos_container.size();
 
     // --  search track ----------
     std::vector<int> track_id_container(max_iter, -1);
-    std::vector<std:vector<int>> indices(10);
+    std::vector<std::vector<int>> indices(10);
     int track_id = 0;
     while ( std::count(track_id_container.begin(), track_id_container.end(), -1) > 5 && track_id < 10) {
 
