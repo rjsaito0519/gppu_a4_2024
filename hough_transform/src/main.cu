@@ -26,8 +26,11 @@ __global__ void houghTransformKernel(int *hough_space, const int *xData, const i
     if (index < dataSize) {
         int x = xData[index];
         int y = yData[index];
+
+        printf("%f", M_PI);
+
         for (int theta = 0; theta < 180; ++theta) {
-            float radian = theta * TMath::Pi() / 180.0;
+            float radian = theta * M_PI / 180.0;
             int rho = (int)(x * cos(radian) + y * sin(radian));
             if (rho >= 0 && rho < maxRho) {
                 atomicAdd(&hough_space[theta * maxRho + rho], 1);
