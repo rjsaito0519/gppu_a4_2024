@@ -21,66 +21,92 @@
 
 
 // CUDAカーネルの定義
-__global__ void houghTransformKernel(int *hough_space, const int *xData, const int *yData, int dataSize, int maxRho) {
+__global__ void houghTransformKernel(int *hough_space, const double *x_data, const double *z_data, int data_size, int max_rho) {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
-    if (index < dataSize) {
-        int x = xData[index];
-        int y = yData[index];
+    if (index < data_size) {
+        double x = x_data[index];
+        double z = z_data[index];
 
-        printf("%f", M_PI);
-
-        for (int theta = 0; theta < 180; ++theta) {
-            float radian = theta * M_PI / 180.0;
-            int rho = (int)(x * cos(radian) + y * sin(radian));
-            if (rho >= 0 && rho < maxRho) {
-                atomicAdd(&hough_space[theta * maxRho + rho], 1);
+        for (int theta = 0; theta <= 180; ++theta) {
+            double radian = theta * M_PI / 180.0;
+            int rho = static_cast<int>( round(z*cosf(radian) + x*sinf(radian) ) );
+            if (rho >= 0 && rho < max_rho) {
+                int hough_index = theta * max_rho + rho + static_cast<int>((max_rho-1)/2);
+                atomicAdd(&hough_space[hough_index], 1);
             }
         }
     }
 }
 
-std::vector<Int_t> tracking(const std::vector<TVector3>& positions)
+std::vector<int> tracking(const std::vector<TVector3>& positions)
 {
     // --  prepare ----------
-    Int_t max_iter = positions.size();
+    int max_iter = positions.size();
 
     // --  search track ----------
-    std::vector<Int_t> track_ids;
-    track_ids.resize(max_iter, -1);
-    Int_t track_id = 0;
-    while ( std::count(track_ids.begin(), track_ids.end(), -1) > 5 && track_id < 10) {
-        // -- make hough hist ----------
-        Double_t theta, r;
-        Hough_hist->Reset();
-        for (Int_t i = 0; i < max_iter; i++) if ( track_ids[i] == -1 ) for(Int_t i_theta=0; i_theta < Li_theta_ndiv; i_theta++){
-            theta = Li_theta_min + i_theta * (Li_theta_max-Li_theta_min)/Li_theta_ndiv;
-            Hough_hist->Fill(theta, std::cos( theta*TMath::DegToRad() )*positions[i].Z() + std::sin( theta*TMath::DegToRad() )*positions[i].X() );
+    std::vector<int> track_id_container(max_iter, -1);
+    int track_id = 0;
+    while ( std::count(track_id_container.begin(), track_id_container.end(), -1) > 5 && track_id < 10) {
+
+        // -- prepare data -----        
+        std::vector<double> host_x_data, host_z_data;
+        for (int i = 0; i < max_iter; i++) if ( track_id_container[i] == -1 ) {
+            host_x_data.push_back(positions[i].X());
+            host_z_data.push_back(positions[i].Z());
         }
-        Int_t maxbin = Hough_hist->GetMaximumBin();
-        Int_t mx,my,mz;
-        Hough_hist->GetBinXYZ(maxbin, mx, my, mz);
-        Double_t mtheta = Hough_hist->GetXaxis()->GetBinCenter(mx)*TMath::DegToRad();
-        Double_t mr = Hough_hist->GetYaxis()->GetBinCenter(my);
-        Double_t r_bin_width = Hough_hist->GetYaxis()->GetBinWidth(0);
+
+        // Allocate CUDA device memory
+        int data_size = host_x_data.size();
+        double *cuda_x_data, *cuda_z_data;
+        int *cuda_hough_space;
+        int max_rho = 2*static_cast<int>(std::ceil(250.0*std::sqrt(2.0))) + 1; // |X|, |Z| maximum values are around 250. +1 mean rho = 0
+        cudaMalloc(&cuda_x_data, data_size * sizeof(double));
+        cudaMalloc(&cuda_z_data, data_size * sizeof(double));
+        cudaMalloc(&cuda_hough_space, 181 * max_rho * sizeof(int));
+
+        // Copy data from host to device
+        cudaMemcpy(cuda_x_data, host_x_data.data(), data_size * sizeof(double), cudaMemcpyHostToDevice);
+        cudaMemcpy(cuda_z_data, host_z_data.data(), data_size * sizeof(double), cudaMemcpyHostToDevice);
+        cudaMemset(cuda_hough_space, 0, 181 * max_rho * sizeof(int));
+
+        // Launch the kernel
+        int threadsPerBlock = 256;
+        int blocksPerGrid = static_cast<int>( std::ceil(data_size/threadsPerBlock) );
+        houghTransformKernel<<<blocksPerGrid, threadsPerBlock>>>(cuda_hough_space, cuda_xData, cuda_yData, data_size, max_rho);
+
+        // Copy the result to the host
+        std::vector<int> host_hough_space(181 * max_rho);
+        cudaMemcpy(host_hough_space.data(), cuda_hough_space, 181 * max_rho * sizeof(int), cudaMemcpyDeviceToHost);
+        
+        // Free device memory
+        cudaFree(cuda_x_data);
+        cudaFree(cuda_z_data);
+        cudaFree(cuda_hough_space);
+
+
+        auto max_it = std::max_element(host_hough_space.begin(), host_hough_space.end());
+        int max_index = std::distance(host_hough_space.begin(), max_it);
+        int max_theta = max_index / max_rho;
+        int max_rho   = max_index % max_rho - static_cast<int>((max_rho-1)/2);
+        std::cout << max_index << ", " << max_theta << ", " << max_rho << std::endl;
 
         // -- event selection ----------
-        Double_t bin_diff;
-        Bool_t within_circ = false;
-        for (Int_t i = 0; i < max_iter; i++) {
-            if ( track_ids[i] != -1 ) continue;
-            within_circ = false;
-            for (Int_t bin_theta = mx-max_bin_diff; bin_theta <= mx+max_bin_diff; bin_theta++) {
-                theta = Hough_hist->GetXaxis()->GetBinCenter(bin_theta);
-                r     = std::cos( theta*TMath::DegToRad() )*positions[i].Z() + std::sin( theta*TMath::DegToRad() )*positions[i].X();
-                bin_diff = TMath::Abs( mr-r )/r_bin_width + TMath::Abs( bin_theta-mx );
-                if ( bin_diff < max_bin_diff ) within_circ = true;
+        double bin_diff;
+        int max_diff = 4;
+        for (int i = 0; i < max_iter; i++) {
+            if ( track_id_container[i] != -1 ) continue;
+            bool within_circ = false;
+            for (int theta = max_theta-max_diff; theta <= max_theta+max_diff; theta++) {
+                double rho = std::cos( theta*TMath::DegToRad() )*positions[i].Z() + std::sin( theta*TMath::DegToRad() )*positions[i].X();
+                double diff = TMath::Abs( max_rho-rho ) + TMath::Abs( max_theta - theta );
+                if ( diff < max_diff ) within_circ = true;
             }
-            if (within_circ) track_ids[i] = track_id;
+            if (within_circ) track_id_container[i] = track_id;
         }
         track_id++;
     }
 
-    return track_ids;
+    return track_id_container;
 }
 
 int main(int argc, char** argv) {
@@ -143,78 +169,36 @@ int main(int argc, char** argv) {
 
     reader.Restart();
     while (reader.Next()) { displayProgressBar( *evnum+1, total_entry);
-        std::vector<TVector3> positions;
+        std::vector<TVector3> position;
         std::vector<std::pair<int, double>> pad_and_de;
         
-        // -- fill -----------------------
-        if (nhit_threshold < *nhTpc) for (Int_t i = 0; i < *nhTpc; i++) {
+        // -- fill -----
+        if (nhit_threshold < *nhTpc) for (int i = 0; i < *nhTpc; i++) {
             int pad = padHelper::getPadID((*layerTpc)[i], (*rowTpc)[i]);
             bool isNoisy = std::binary_search(padHelper::noisy_pad.begin(), padHelper::noisy_pad.end(), pad);
             if (isNoisy) continue;
-            if ( min_tdc_gate < (*tTpc)[i] && (*tTpc)[i] < max_tdc_gate ) { // normal
-            // if ( min_tTpc_gate < (*tTpc)[i] && (*tTpc)[i] < max_tTpc_gate && pad > 1343) {  // w/o TGT region
+            if ( min_tdc_gate < (*tTpc)[i] && (*tTpc)[i] < max_tdc_gate ) {
                 pad_and_de.emplace_back( pad, (*deTpc)[i] );
                 TVector3 pad_center_pos = padHelper::getPoint(pad);
                 pad_center_pos.SetY( (*tTpc)[i] );
-                positions.push_back( pad_center_pos );
+                position.push_back( pad_center_pos );
             }
         }
-        if ( positions.size() == 0) continue;
-        // -- tracking and cal dedx ----------
-        std::vector<int> track_ids = tracking(positions);
-    
+        if ( position.size() == 0) continue;
+        
+        // -- tracking and cal dedx -----
+        std::vector<int> track_id_container = tracking(positions);
+
     }
 
-    // データサイズの指定
-    int dataSize = 1000; // 任意のデータサイズ
-    std::vector<int> xData(dataSize);
-    std::vector<int> yData(dataSize);
-
-    // 乱数生成器の初期化
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dist(0, 1024); // 0から1024までの乱数
-
-    // xDataとyDataに乱数を詰める
-    for (int i = 0; i < dataSize; ++i) {
-        xData[i] = dist(gen);
-        yData[i] = dist(gen);
-    }
-
-    // CUDAデバイスメモリを確保
-    int *d_xData, *d_yData, *d_hough_space;
-    int maxRho = (int)hypot(1024, 1024); // 仮の最大範囲。適宜調整してください。
-    cudaMalloc(&d_xData, dataSize * sizeof(int));
-    cudaMalloc(&d_yData, dataSize * sizeof(int));
-    cudaMalloc(&d_hough_space, 180 * maxRho * sizeof(int));
-
-    // ホストからデバイスへデータをコピー
-    cudaMemcpy(d_xData, xData.data(), dataSize * sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_yData, yData.data(), dataSize * sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemset(d_hough_space, 0, 180 * maxRho * sizeof(int));
-
-    // カーネルの起動
-    int threadsPerBlock = 256;
-    int blocksPerGrid = (dataSize + threadsPerBlock - 1) / threadsPerBlock;
-    houghTransformKernel<<<blocksPerGrid, threadsPerBlock>>>(d_hough_space, d_xData, d_yData, dataSize, maxRho);
-
-    // 結果をホストにコピー
-    std::vector<int> hough_space(180 * maxRho);
-    cudaMemcpy(hough_space.data(), d_hough_space, 180 * maxRho * sizeof(int), cudaMemcpyDeviceToHost);
-
-    // 結果の一部を表示
-    std::cout << "Hough Space (一部表示):" << std::endl;
-    for (int i = 0; i < 10; ++i) {
-        for (int j = 0; j < 10; ++j) {
-            std::cout << hough_space[i * maxRho + j] << " ";
-        }
-        std::cout << std::endl;
-    }
-
-    // デバイスメモリを解放
-    cudaFree(d_xData);
-    cudaFree(d_yData);
-    cudaFree(d_hough_space);
+    // // 結果の一部を表示
+    // std::cout << "Hough Space (一部表示):" << std::endl;
+    // for (int i = 0; i < 10; ++i) {
+    //     for (int j = 0; j < 10; ++j) {
+    //         std::cout << hough_space[i * max_rho + j] << " ";
+    //     }
+    //     std::cout << std::endl;
+    // }
 
     return 0;
 }
