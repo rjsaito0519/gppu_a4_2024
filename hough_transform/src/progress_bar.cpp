@@ -25,5 +25,8 @@ void displayProgressBar(int current, int total) {
         }
         std::cout << "] " << std::fixed << std::setprecision(1) << (progress * 100.0) << " %\r";
         std::cout.flush();  // Flush the output to display immediately
+        if (percent == 100) {
+            std::cout << std::endl;
+        }
     }
 }
