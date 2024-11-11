@@ -117,10 +117,14 @@ std::vector<std::vector<int>> tracking_cuda(const std::vector<TVector3>& pos_con
         cudaFree(cuda_z_data);
         cudaFree(cuda_hough_space);
 
+        auto start_time5 = std::chrono::high_resolution_clock::now();
         auto max_it = std::max_element(host_hough_space.begin(), host_hough_space.end());
         int max_index = std::distance(host_hough_space.begin(), max_it);
         int max_theta = max_index / n_rho;
         int max_rho   = max_index % n_rho - static_cast<int>((n_rho-1)/2);
+        auto end_time5 = std::chrono::high_resolution_clock::now();
+        auto duration5 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time5 - start_time5).count();
+        std::cout << "max it: " << duration5 << std::endl;
 
         // -- event selection ----------
         double bin_diff;
