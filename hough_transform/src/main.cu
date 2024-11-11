@@ -30,14 +30,14 @@ static std::ofstream file("output.txt", std::ios::app); // ファイルを開き
 static std::vector<int> duration_container;
 
 // CUDAカーネルの定義
-__global__ void houghTransformKernel(int *hough_space, const double *x_data, const double *z_data, int data_size, int n_rho) {
+__global__ void houghTransformKernel(int *hough_space, const float *x_data, const float *z_data, int data_size, int n_rho) {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < data_size) {
-        double x = x_data[index];
-        double z = z_data[index];
+        float x = x_data[index];
+        float z = z_data[index];
 
         for (int theta = 0; theta <= 180; ++theta) {
-            double radian = theta * M_PI / 180.0;
+            float radian = theta * M_PI / 180.0;
             int rho = static_cast<int>( round(z*cosf(radian) + x*sinf(radian)) + (n_rho-1)/2 );
             atomicAdd(&hough_space[theta * n_rho + rho], 1);
         }
@@ -58,8 +58,8 @@ std::vector<std::vector<int>> tracking_cuda(const std::vector<TVector3>& pos_con
         auto start_time = std::chrono::high_resolution_clock::now();
         
         // -- prepare data -----
-        std::vector<double> host_x_data, host_z_data;
-        double most_far_position = 0.0;
+        std::vector<float> host_x_data, host_z_data;
+        float most_far_position = 0.0;
         for (int i = 0; i < max_iter; i++) if ( track_id_container[i] == -1 ) {
             host_x_data.push_back(pos_container[i].X());
             host_z_data.push_back(pos_container[i].Z());
@@ -70,16 +70,16 @@ std::vector<std::vector<int>> tracking_cuda(const std::vector<TVector3>& pos_con
 
         // Allocate CUDA device memory
         int data_size = host_x_data.size();
-        double *cuda_x_data, *cuda_z_data;
+        float *cuda_x_data, *cuda_z_data;
         int *cuda_hough_space;
         int n_rho = 2*static_cast<int>(std::ceil(most_far_position*std::sqrt(2.0))) + 1; // |X|, |Z| maximum values are around 250. +1 mean rho = 0
-        cudaMalloc(&cuda_x_data, data_size * sizeof(double));
-        cudaMalloc(&cuda_z_data, data_size * sizeof(double));
+        cudaMalloc(&cuda_x_data, data_size * sizeof(float));
+        cudaMalloc(&cuda_z_data, data_size * sizeof(float));
         cudaMalloc(&cuda_hough_space, 181 * n_rho * sizeof(int));
 
         // Copy data from host to device
-        cudaMemcpy(cuda_x_data, host_x_data.data(), data_size * sizeof(double), cudaMemcpyHostToDevice);
-        cudaMemcpy(cuda_z_data, host_z_data.data(), data_size * sizeof(double), cudaMemcpyHostToDevice);
+        cudaMemcpy(cuda_x_data, host_x_data.data(), data_size * sizeof(float), cudaMemcpyHostToDevice);
+        cudaMemcpy(cuda_z_data, host_z_data.data(), data_size * sizeof(float), cudaMemcpyHostToDevice);
         cudaMemset(cuda_hough_space, 0, 181 * n_rho * sizeof(int));
 
         // Launch the kernel
