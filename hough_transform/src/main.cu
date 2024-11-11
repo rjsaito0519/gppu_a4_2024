@@ -49,7 +49,7 @@ std::vector<std::vector<int>> tracking(const std::vector<TVector3>& pos_containe
     std::vector<std::vector<int>> indices(10);
     int track_id = 0;
     while ( std::count(track_id_container.begin(), track_id_container.end(), -1) > 5 && track_id < 10) {
-
+        auto start_time = std::chrono::high_resolution_clock::now();
         // -- prepare data -----
         std::vector<double> host_x_data, host_z_data;
         double most_far_position = 0.0;
@@ -89,6 +89,9 @@ std::vector<std::vector<int>> tracking(const std::vector<TVector3>& pos_containe
         cudaFree(cuda_z_data);
         cudaFree(cuda_hough_space);
 
+        auto end_time = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
+        std::cout << duration << std::endl;
 
         auto max_it = std::max_element(host_hough_space.begin(), host_hough_space.end());
         int max_index = std::distance(host_hough_space.begin(), max_it);
@@ -225,11 +228,11 @@ int main(int argc, char** argv) {
         if ( pos_container.size() == 0) continue;
         
         // -- tracking and cal dedx -----
-        auto start_time = std::chrono::high_resolution_clock::now();
+        // auto start_time = std::chrono::high_resolution_clock::now();
         std::vector<std::vector<int>> indices = tracking(pos_container);
-        auto end_time = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
-        std::cout << duration << std::endl;
+        // auto end_time = std::chrono::high_resolution_clock::now();
+        // auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+        // std::cout << duration << std::endl;
 
         for (Int_t track_id = 0; track_id < 10; track_id++ ) {
             int hit_num = indices[track_id].size();
