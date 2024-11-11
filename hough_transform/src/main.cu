@@ -57,6 +57,7 @@ std::vector<std::vector<int>> tracking_cuda(const std::vector<TVector3>& pos_con
         auto start_time = std::chrono::high_resolution_clock::now();
         
         // -- prepare data -----
+        auto start_time0 = std::chrono::high_resolution_clock::now();
         std::vector<float> host_x_data, host_z_data;
         float most_far_position = 0.0;
         for (int i = 0; i < max_iter; i++) if ( track_id_container[i] == -1 ) {
@@ -66,6 +67,9 @@ std::vector<std::vector<int>> tracking_cuda(const std::vector<TVector3>& pos_con
                 most_far_position = (std::abs(pos_container[i].X()) > std::abs(pos_container[i].Z())) ? std::abs(pos_container[i].X()) : std::abs(pos_container[i].Z());
             }
         }
+        auto end_time0 = std::chrono::high_resolution_clock::now();
+        auto duration0 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time0 - start_time0).count();
+        std::cout << "data preparation: " << duration0 << std::endl;
 
         // Allocate CUDA device memory
         int data_size = host_x_data.size();
