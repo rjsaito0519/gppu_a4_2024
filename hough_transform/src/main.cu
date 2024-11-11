@@ -21,7 +21,7 @@
 
 
 // CUDAカーネルの定義
-__global__ void houghTransformKernel(int *hough_space, const double *x_data, const double *z_data, int data_size, int max_rho) {
+__global__ void houghTransformKernel(int *hough_space, const double *x_data, const double *z_data, int data_size, int n_rho) {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < data_size) {
         double x = x_data[index];
@@ -30,8 +30,8 @@ __global__ void houghTransformKernel(int *hough_space, const double *x_data, con
         for (int theta = 0; theta <= 180; ++theta) {
             double radian = theta * M_PI / 180.0;
             int rho = static_cast<int>( round(z*cosf(radian) + x*sinf(radian) ) );
-            if (rho >= 0 && rho < max_rho) {
-                int hough_index = theta * max_rho + rho + static_cast<int>((max_rho-1)/2);
+            if (rho >= 0 && rho < n_rho) {
+                int hough_index = theta * n_rho + rho + static_cast<int>((n_rho-1)/2);
                 atomicAdd(&hough_space[hough_index], 1);
             }
         }
@@ -59,24 +59,24 @@ std::vector<int> tracking(const std::vector<TVector3>& positions)
         int data_size = host_x_data.size();
         double *cuda_x_data, *cuda_z_data;
         int *cuda_hough_space;
-        int max_rho = 2*static_cast<int>(std::ceil(250.0*std::sqrt(2.0))) + 1; // |X|, |Z| maximum values are around 250. +1 mean rho = 0
+        int n_rho = 2*static_cast<int>(std::ceil(250.0*std::sqrt(2.0))) + 1; // |X|, |Z| maximum values are around 250. +1 mean rho = 0
         cudaMalloc(&cuda_x_data, data_size * sizeof(double));
         cudaMalloc(&cuda_z_data, data_size * sizeof(double));
-        cudaMalloc(&cuda_hough_space, 181 * max_rho * sizeof(int));
+        cudaMalloc(&cuda_hough_space, 181 * n_rho * sizeof(int));
 
         // Copy data from host to device
         cudaMemcpy(cuda_x_data, host_x_data.data(), data_size * sizeof(double), cudaMemcpyHostToDevice);
         cudaMemcpy(cuda_z_data, host_z_data.data(), data_size * sizeof(double), cudaMemcpyHostToDevice);
-        cudaMemset(cuda_hough_space, 0, 181 * max_rho * sizeof(int));
+        cudaMemset(cuda_hough_space, 0, 181 * n_rho * sizeof(int));
 
         // Launch the kernel
         int threadsPerBlock = 256;
         int blocksPerGrid = static_cast<int>( std::ceil(data_size/threadsPerBlock) );
-        houghTransformKernel<<<blocksPerGrid, threadsPerBlock>>>(cuda_hough_space, cuda_xData, cuda_yData, data_size, max_rho);
+        houghTransformKernel<<<blocksPerGrid, threadsPerBlock>>>(cuda_hough_space, cuda_x_data, cuda_z_data, data_size, n_rho);
 
         // Copy the result to the host
-        std::vector<int> host_hough_space(181 * max_rho);
-        cudaMemcpy(host_hough_space.data(), cuda_hough_space, 181 * max_rho * sizeof(int), cudaMemcpyDeviceToHost);
+        std::vector<int> host_hough_space(181 * n_rho);
+        cudaMemcpy(host_hough_space.data(), cuda_hough_space, 181 * n_rho * sizeof(int), cudaMemcpyDeviceToHost);
         
         // Free device memory
         cudaFree(cuda_x_data);
@@ -86,8 +86,8 @@ std::vector<int> tracking(const std::vector<TVector3>& positions)
 
         auto max_it = std::max_element(host_hough_space.begin(), host_hough_space.end());
         int max_index = std::distance(host_hough_space.begin(), max_it);
-        int max_theta = max_index / max_rho;
-        int max_rho   = max_index % max_rho - static_cast<int>((max_rho-1)/2);
+        int max_theta = max_index / n_rho;
+        int max_rho   = max_index % n_rho - static_cast<int>((n_rho-1)/2);
         std::cout << max_index << ", " << max_theta << ", " << max_rho << std::endl;
 
         // -- event selection ----------
