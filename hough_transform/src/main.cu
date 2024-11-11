@@ -2,8 +2,10 @@
 #include <iomanip>
 #include <vector>
 #include <cmath>
-#include <algorithm>
-#include <cuda_runtime.h>
+#include <algorithm> // std::max_element, std::count
+#include <cuda_runtime.h> // CUDA runtime
+#include <fstream> // std::ifstream
+#include <cstdio> // std::remove
 #include <TFile.h>
 #include <TTree.h>
 #include <TTreeReader.h>
@@ -19,7 +21,6 @@
 #include "progress_bar.h"
 #include "fit_tTpc.h"
 #include "pad_helper.h"
-
 
 
 // CUDAカーネルの定義
@@ -135,7 +136,6 @@ int main(int argc, char** argv) {
     }
     TTreeReader reader("tpc", f);
     int total_entry = reader.GetEntries();
-    TTreeReaderValue<int> runnum(reader, "runnum");
     TTreeReaderValue<int> evnum(reader, "evnum");
     TTreeReaderValue<int> nhTpc(reader, "nhTpc");
     TTreeReaderValue<std::vector<int>> layerTpc(reader, "layerTpc");
@@ -143,16 +143,11 @@ int main(int argc, char** argv) {
     TTreeReaderValue<std::vector<double>> deTpc(reader, "deTpc");
     TTreeReaderValue<std::vector<double>> tTpc(reader, "tTpc");
     
+
     // +-------------------+
     // | prepare histogram |
     // +-------------------+
     auto h_tdc = new TH1D("tdc", "tdc", 2000, 0.0, 200.0);
-    // auto hdedx = new TH1D("dedx", "", 400, 0, 200);
-    // auto hn = new TH1D("n", "", 500, 0, 500);
-    // auto halpha = new TH1D("alpha", "", 500, -10, 10);
-    
-    // auto hdedx_vs_redchi = new TH2D("dedx_vs_redchi", "", 400, 0, 200, 1000, 0, 1000);
-    // auto hdedx_vs_n = new TH2D("dedx_vs_n", "", 400, 0, 200, 500, 0, 500);
 
 
     // +-----------------------------------+
@@ -167,40 +162,46 @@ int main(int argc, char** argv) {
     double max_tdc_gate = tdc_fit_result[1] + 3.0*tdc_fit_result[2];
 
 
+    // +--------------------------+
+    // | prepare output root file |
+    // +--------------------------+
+    TString output_path = Form("./results/%s_output.root", save_name.Data());
+    if (std::ifstream(output_path.Data())) std::remove(output_path.Data());
+    TFile fout(output_path.Data(), "create");
+    TTree tracking_tree("tree", ""); 
+
+    // -- prepare root file branch -----
+    std::vector<int> pad_id;
+    std::vector<double> pos_x, pos_y, pos_z, adc;
+    double a_pos, b_pos, a_time, b_time, track_length, redchi2_pos, redchi2_time, sum_de, angle_pos, angle_time, dedx;
+    int hit_num, evnum_buf;
+
+    tracking_tree.Branch("evnum", &evnum_buf, "evnum/I");
+    tracking_tree.Branch("nhit", &hit_num, "nhit/I");
+    tracking_tree.Branch("a_pos", &a_pos, "a_pos/D");
+    tracking_tree.Branch("b_pos", &b_pos, "b_pos/D");
+    tracking_tree.Branch("a_time", &a_time, "a_time/D");
+    tracking_tree.Branch("b_time", &b_time, "b_time/D");
+    tracking_tree.Branch("sum_de", &sum_de, "desum/D");
+    tracking_tree.Branch("length", &track_length, "length/D");
+    tracking_tree.Branch("dedx", &dedx, "dedx/D");
+    tracking_tree.Branch("redchi2_pos", &redchi2_pos, "redchi2_pos/D");
+    tracking_tree.Branch("redchi2_time", &redchi2_time, "redchi2_time/D");
+    tracking_tree.Branch("angle_pos", &angle_pos, "angle_pos/D");
+    tracking_tree.Branch("angle_time", &angle_time, "angle_time/D");
+    tracking_tree.Branch("adc", &adc);
+    tracking_tree.Branch("pad_id", &pad_id);
+
+
     // +---------------------------------+
     // | detect track by hough transform |
     // +---------------------------------+
     int nhit_threshold = 0;
     double diff_threshold = 30.;
-
-    // // -- prepare root file branch -----
-    // std::vector<TVector3> positions, position_buf;
-    // std::vector<std::pair<Int_t, Double_t>> pad_and_de;
-    // std::vector<Int_t> track_ids, pad_id;
-    // std::vector<Double_t> pos_x, pos_y, pos_z, distance_from_origin, adc;
-    // Double_t a_pos, b_pos, a_time, b_time, track_length, redchi2_pos, redchi2_time, sum_de, angle_pos, angle_time, dedx;
-    // Int_t hit_num, evnum_buf;
-    // TVector3 pos_origin, vec_direc;
-
-    // tracking_tree.Branch("totnum", &tot_num, "totnum/I");
-    // tracking_tree.Branch("evnum", &evnum_buf, "evnum/I");
-    // tracking_tree.Branch("nhit", &hit_num, "nhit/I");
-    // tracking_tree.Branch("a_pos", &a_pos, "a_pos/D");
-    // tracking_tree.Branch("b_pos", &b_pos, "b_pos/D");
-    // tracking_tree.Branch("a_time", &a_time, "a_time/D");
-    // tracking_tree.Branch("b_time", &b_time, "b_time/D");
-    // tracking_tree.Branch("desum", &sum_de, "desum/D");
-    // tracking_tree.Branch("length", &track_length, "length/D");
-    // tracking_tree.Branch("dedx", &dedx, "dedx/D");
-    // tracking_tree.Branch("redchi2_pos", &redchi2_pos, "redchi2_pos/D");
-    // tracking_tree.Branch("redchi2_time", &redchi2_time, "redchi2_time/D");
-    // tracking_tree.Branch("angle_pos", &angle_pos, "angle_pos/D");
-    // tracking_tree.Branch("angle_time", &angle_time, "angle_time/D");
-    // tracking_tree.Branch("adc", &adc);
-    // tracking_tree.Branch("pad_id", &pad_id);
-
     reader.Restart();
     while (reader.Next()) { displayProgressBar( *evnum+1, total_entry);
+        evnum_buf = *evnum;
+
         std::vector<TVector3> pos_container;
         std::vector<std::pair<int, double>> pad_and_de;
         
@@ -225,25 +226,20 @@ int main(int argc, char** argv) {
             if (hit_num == 0) continue;
             
             // -- initialize ---------
-            // pos_x.clear();
-            // pos_y.clear();
-            // pos_z.clear();
-            // distance_from_origin.clear();
-            // position_buf.clear();
-            // adc.clear();
-            // pad_id.clear();
-            double track_length = 0.0, sum_de = 0.0;
-
-            std::vector<double> pos_x, pos_y, pos_z;
+            pos_x.clear();
+            pos_y.clear();
+            pos_z.clear();
+            adc.clear();
+            pad_id.clear();
+            track_length = 0.0, sum_de = 0.0;
 
             // -- check each track ---------
             for (const auto index : indices[track_id]) {
                 pos_x.push_back( pos_container[index].X() );
                 pos_y.push_back( pos_container[index].Y() );
                 pos_z.push_back( pos_container[index].Z() );
-                // position_buf.push_back( pos_container[i] );
-                // pad_id.push_back(pad_and_de[i].first);
-                // adc.push_back(pad_and_de[i].second);
+                pad_id.push_back(pad_and_de[i].first);
+                adc.push_back(pad_and_de[i].second);
                 sum_de += pad_and_de[index].second;
             }
 
@@ -251,19 +247,19 @@ int main(int argc, char** argv) {
             auto *g_time = new TGraph(pos_x.size(), &pos_x[0], &pos_y[0]);
             auto *f_time = new TF1("fit_f_time", "[0]*x + [1]", -250.0, 250.0);
             g_time->Fit("fit_f_time", "Q", "", -250.0, 250.0);
-            double a_time = f_time->GetParameter(0);
-            double b_time = f_time->GetParameter(1);
-            double redchi2_time = f_time->GetChisquare() / f_time->GetNDF();
-            double angle_time = TMath::ATan(a_time)*TMath::RadToDeg();
+            a_time = f_time->GetParameter(0);
+            b_time = f_time->GetParameter(1);
+            redchi2_time = f_time->GetChisquare() / f_time->GetNDF();
+            angle_time = TMath::ATan(a_time)*TMath::RadToDeg();
 
             // -- fit xz (position) plain ----------
             auto *g_pos = new TGraph(pos_x.size(), &pos_x[0], &pos_z[0]);
             auto *f_pos = new TF1( "fit_f_pos", "[0]*x + [1]", -250.0, 250.0);
             g_pos->Fit("fit_f_pos", "Q", "", -250.0, 250.0);
-            double a_pos = f_pos->GetParameter(0);
-            double b_pos = f_pos->GetParameter(1);
-            double redchi2_pos = f_pos->GetChisquare() / f_pos->GetNDF();
-            double angle_pos = TMath::ATan(a_pos)*TMath::RadToDeg();
+            a_pos = f_pos->GetParameter(0);
+            b_pos = f_pos->GetParameter(1);
+            redchi2_pos = f_pos->GetChisquare() / f_pos->GetNDF();
+            angle_pos = TMath::ATan(a_pos)*TMath::RadToDeg();
             
             // -- calc. dedx ----------
             TVector3 pos_origin(-250.0, 0.0, -250.0*a_pos+b_pos);
@@ -276,15 +272,10 @@ int main(int argc, char** argv) {
                 Double_t diff = distance_from_origin[i]-distance_from_origin[i-1];
                 if (diff < diff_threshold) track_length += diff;
             }
-            double dedx = sum_de/track_length;
+            dedx = sum_de/track_length;
 
-            // // -- fill data to histo ----------
-            // hdedx->Fill( sum_de/track_length );
-            // hn->Fill( pos_x.size() );
-            // halpha->Fill( a_pos );
-            // hdedx_vs_redchi->Fill( sum_de/track_length, redchi2_pos );
-            // hdedx_vs_n->Fill( sum_de/track_length, pos_x.size() );
-            // tracking_tree.Fill();
+            // -- fill branch -----
+            tracking_tree.Fill();
 
             // -- delete gr ---------- 
             delete g_time;
@@ -292,9 +283,14 @@ int main(int argc, char** argv) {
             delete g_pos;
             delete f_pos;
         }
-        if (*evnum >= 500) break;
-
+        // if (*evnum >= 500) break;
     }
+
+    // +------------+
+    // | Write data |
+    // +------------+
+    tracking_tree.Write();
+    fout.Close(); 
 
     return 0;
 }
