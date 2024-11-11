@@ -23,6 +23,8 @@
 #include "fit_tTpc.h"
 #include "pad_helper.h"
 
+static std::ofstream file("output.txt", std::ios::app); // ファイルを開きっぱなしにする
+static std::vector<int> duration_container;
 
 // CUDAカーネルの定義
 __global__ void houghTransformKernel(int *hough_space, const double *x_data, const double *z_data, int data_size, int n_rho) {
@@ -91,7 +93,7 @@ std::vector<std::vector<int>> tracking(const std::vector<TVector3>& pos_containe
 
         auto end_time = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
-        std::cout << duration << std::endl;
+        duration_container.push_back(duration);
 
         auto max_it = std::max_element(host_hough_space.begin(), host_hough_space.end());
         int max_index = std::distance(host_hough_space.begin(), max_it);
@@ -199,6 +201,7 @@ int main(int argc, char** argv) {
     tracking_tree.Branch("angle_time", &angle_time, "angle_time/D");
     tracking_tree.Branch("adc", &adc);
     tracking_tree.Branch("pad_id", &pad_id);
+    tracking_tree.Branch("duration", &duration_container);
 
 
     // +---------------------------------+
@@ -228,12 +231,8 @@ int main(int argc, char** argv) {
         if ( pos_container.size() == 0) continue;
         
         // -- tracking and cal dedx -----
-        // auto start_time = std::chrono::high_resolution_clock::now();
+        duration_container.clear();
         std::vector<std::vector<int>> indices = tracking(pos_container);
-        // auto end_time = std::chrono::high_resolution_clock::now();
-        // auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
-        // std::cout << duration << std::endl;
-
         for (Int_t track_id = 0; track_id < 10; track_id++ ) {
             int hit_num = indices[track_id].size();
             if (hit_num == 0) continue;
