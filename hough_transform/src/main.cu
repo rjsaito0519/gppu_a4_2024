@@ -359,7 +359,7 @@ int main(int argc, char** argv) {
             delete g_pos;
             delete f_pos;
         }
-        // if (*evnum >= 500) break;
+        if (*evnum >= 500) break;
     }
     std::cout << std::endl; // for progress bar
 
