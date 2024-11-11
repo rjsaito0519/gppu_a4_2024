@@ -141,7 +141,7 @@ std::vector<std::vector<int>> tracking_cpu(const std::vector<TVector3>& pos_cont
         auto start_time = std::chrono::high_resolution_clock::now();
 
         // -- prepare data -----
-        TH2D h_hough("for_hough_transform", ";theta (deg.); r (mm)", 181, 0.0, 180.0, n_rho, -1.0*std::ceil(250.0*std::sqrt(2.0)), std::ceil(250.0*std::sqrt(2.0)));
+        TH2D h_hough("for_hough_transform", ";theta (deg.); r (mm)", 180, -0.5, 180.0-0.5, n_rho, -1.0*std::ceil(250.0*std::sqrt(2.0)), std::ceil(250.0*std::sqrt(2.0)));
         for (int i = 0; i < max_iter; i++) if ( track_id_container[i] == -1 ) {
             for (int theta = 0; theta <= 180; theta++) {
                 double radian = theta * M_PI / 180.0;
