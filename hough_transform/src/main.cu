@@ -92,7 +92,6 @@ std::vector<std::vector<int>> tracking(const std::vector<TVector3>& pos_containe
         int max_index = std::distance(host_hough_space.begin(), max_it);
         int max_theta = max_index / n_rho;
         int max_rho   = max_index % n_rho - static_cast<int>((n_rho-1)/2);
-        std::cout << track_id << ": " << n_rho << ", " << *max_it << ", " << host_x_data.size() << ", " << max_index << ", " << max_theta << ", " << max_rho << std::endl;
 
         // -- event selection ----------
         double bin_diff;
@@ -296,15 +295,6 @@ int main(int argc, char** argv) {
         if (*evnum >= 500) break;
 
     }
-
-    // // 結果の一部を表示
-    // std::cout << "Hough Space (一部表示):" << std::endl;
-    // for (int i = 0; i < 10; ++i) {
-    //     for (int j = 0; j < 10; ++j) {
-    //         std::cout << hough_space[i * max_rho + j] << " ";
-    //     }
-    //     std::cout << std::endl;
-    // }
 
     return 0;
 }
