@@ -2,7 +2,7 @@
 #include <iomanip>
 #include <vector>
 #include <cmath>
-#include <random>
+#include <algorithm>
 #include <cuda_runtime.h>
 #include <TFile.h>
 #include <TTree.h>
@@ -13,11 +13,13 @@
 #include <TF1.h>
 #include <TApplication.h>
 #include <TMath.h>
+#include <TGraph.h>
 #include <TBox.h>
 
 #include "progress_bar.h"
 #include "fit_tTpc.h"
 #include "pad_helper.h"
+
 
 
 // CUDAカーネルの定義
@@ -268,6 +270,7 @@ int main(int argc, char** argv) {
             TVector3 pos_origin(-250.0, 0.0, -250.0*a_pos+b_pos);
             TVector3 vec_direc(1.0, 0.0, a_pos);
 
+            std::vector<double> distance_from_origin;
             for (const auto index : indices[track_id]) distance_from_origin.push_back( vec_direc.Dot( pos_container[index] - pos_origin ) / vec_direc.Mag() );
             std::sort(distance_from_origin.begin(), distance_from_origin.end());
             for (Int_t i = 1, n = distance_from_origin.size(); i < n; i++) {
