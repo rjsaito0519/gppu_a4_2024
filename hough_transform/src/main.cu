@@ -152,11 +152,11 @@ std::vector<std::vector<int>> tracking_cpu(const std::vector<TVector3>& pos_cont
 
         int max_global_bin = h_hough.GetMaximumBin();
         int max_x_bin, max_y_bin, max_z_bin;
-        h_hough->GetBinXYZ(max_global_bin, max_x_bin, max_y_bin, max_z_bin);
+        h_hough.GetBinXYZ(max_global_bin, max_x_bin, max_y_bin, max_z_bin);
         double max_theta = h_hough.GetXaxis()->GetBinCenter(max_x_bin);
         std::cout << max_x_bin << ", " << max_theta << std::endl;
         double max_rho   = h_hough.GetYaxis()->GetBinCenter(max_y_bin);
-        
+
 
         // -- event selection ----------
         double bin_diff;
