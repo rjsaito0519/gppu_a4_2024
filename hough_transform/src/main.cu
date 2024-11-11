@@ -8,6 +8,9 @@
 #include <cstdio> // std::remove
 #include <chrono> // std::chrono
 
+#include <thrust/device_vector.h>
+#include <thrust/extrema.h>
+#include <thrust/host_vector.h>
 
 #include <TFile.h>
 #include <TTree.h>
