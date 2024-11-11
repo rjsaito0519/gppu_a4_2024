@@ -218,7 +218,7 @@ int main(int argc, char** argv) {
         if ( pos_container.size() == 0) continue;
         
         // -- tracking and cal dedx -----
-        std::vector<std:vector<int>> indices = tracking(pos_container);
+        std::vector<std::vector<int>> indices = tracking(pos_container);
         for (Int_t track_id = 0; track_id < 10; track_id++ ) {
             int hit_num = indices[track_id].size();
             if (hit_num == 0) continue;
