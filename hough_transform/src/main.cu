@@ -54,7 +54,6 @@ std::vector<std::vector<int>> tracking_cuda(const std::vector<TVector3>& pos_con
     std::vector<std::vector<int>> indices(10);
     int track_id = 0;
     while ( std::count(track_id_container.begin(), track_id_container.end(), -1) > 5 && track_id < 10) {
-
         auto start_time = std::chrono::high_resolution_clock::now();
         
         // -- prepare data -----
@@ -73,24 +72,42 @@ std::vector<std::vector<int>> tracking_cuda(const std::vector<TVector3>& pos_con
         float *cuda_x_data, *cuda_z_data;
         int *cuda_hough_space;
         int n_rho = 2*static_cast<int>(std::ceil(most_far_position*std::sqrt(2.0))) + 1; // |X|, |Z| maximum values are around 250. +1 mean rho = 0
+        
+        auto start_time1 = std::chrono::high_resolution_clock::now();
         cudaMalloc(&cuda_x_data, data_size * sizeof(float));
         cudaMalloc(&cuda_z_data, data_size * sizeof(float));
         cudaMalloc(&cuda_hough_space, 181 * n_rho * sizeof(int));
+        auto end_time1 = std::chrono::high_resolution_clock::now();
+        auto duration1 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time1 - start_time1).count();
+        std::cout << "cudaMalloc: " << duration1 << std::endl;
 
         // Copy data from host to device
+        auto start_time2 = std::chrono::high_resolution_clock::now();
         cudaMemcpy(cuda_x_data, host_x_data.data(), data_size * sizeof(float), cudaMemcpyHostToDevice);
         cudaMemcpy(cuda_z_data, host_z_data.data(), data_size * sizeof(float), cudaMemcpyHostToDevice);
         cudaMemset(cuda_hough_space, 0, 181 * n_rho * sizeof(int));
+        auto end_time2 = std::chrono::high_resolution_clock::now();
+        auto duration2 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time2 - start_time2).count();
+        std::cout << "cudaMemset: " << duration2 << std::endl;
 
         // Launch the kernel
         int threadsPerBlock = 256;
         int blocksPerGrid = (data_size + threadsPerBlock - 1) / threadsPerBlock;
+ 
+        auto start_time3 = std::chrono::high_resolution_clock::now();
         houghTransformKernel<<<blocksPerGrid, threadsPerBlock>>>(cuda_hough_space, cuda_x_data, cuda_z_data, data_size, n_rho);
+        auto end_time3 = std::chrono::high_resolution_clock::now();
+        auto duration3 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time3 - start_time3).count();
+        std::cout << "houghTransformKernel: " << duration3 << std::endl;
 
         // Copy the result to the host
         std::vector<int> host_hough_space(181 * n_rho);
+        auto start_time4 = std::chrono::high_resolution_clock::now();
         cudaMemcpy(host_hough_space.data(), cuda_hough_space, 181 * n_rho * sizeof(int), cudaMemcpyDeviceToHost);
-        
+        auto end_time4 = std::chrono::high_resolution_clock::now();
+        auto duration4 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time4 - start_time4).count();
+        std::cout << "cudaMemcpy: " << duration4 << std::endl;
+
         // Free device memory
         cudaFree(cuda_x_data);
         cudaFree(cuda_z_data);
@@ -121,6 +138,7 @@ std::vector<std::vector<int>> tracking_cuda(const std::vector<TVector3>& pos_con
 
         auto end_time = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
+        std::cout << "total: " << duration << std::endl;
         duration_container.push_back(duration);
     }
 
