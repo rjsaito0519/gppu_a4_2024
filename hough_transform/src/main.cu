@@ -55,7 +55,7 @@ std::vector<int> tracking(const std::vector<TVector3>& positions)
             host_x_data.push_back(positions[i].X());
             host_z_data.push_back(positions[i].Z());
             if (std::abs(positions[i].X()) > most_far_position || std::abs(positions[i].Z()) > most_far_position) {
-                most_far_position = (std::abs(positions[i].X()) > std::abs(positions[i].Z())) ? positions[i].X() : positions[i].Z();
+                most_far_position = (std::abs(positions[i].X()) > std::abs(positions[i].Z())) ? std::abs(positions[i].X()) : std::abs(positions[i].Z());
             }
         }
 
