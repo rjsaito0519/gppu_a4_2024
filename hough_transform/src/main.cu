@@ -7,17 +7,20 @@
 #include <fstream> // std::ifstream
 #include <cstdio> // std::remove
 #include <chrono> // std::chrono
+
 #include <TFile.h>
 #include <TTree.h>
 #include <TTreeReader.h>
 #include <TTreeReaderValue.h>
 #include <TH1.h>
+#include <TH2.h>
 #include <TCanvas.h>
 #include <TF1.h>
 #include <TApplication.h>
 #include <TMath.h>
 #include <TGraph.h>
 #include <TBox.h>
+#include <TVector3.h>
 
 #include "progress_bar.h"
 #include "fit_tTpc.h"
