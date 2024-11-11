@@ -30,11 +30,7 @@ __global__ void houghTransformKernel(int *hough_space, const double *x_data, con
         for (int theta = 0; theta <= 180; ++theta) {
             double radian = theta * M_PI / 180.0;
             int rho = static_cast<int>( round(z*cosf(radian) + x*sinf(radian)) + (n_rho-1)/2 );
-            if (rho >= 0 && rho < n_rho) {
-                atomicAdd(&hough_space[theta * n_rho + rho], 1);
-            } else {
-                printf("x = %f, z = %f, theta = %d, n_rho = %d, rho = %d\n", x, z, theta, n_rho, rho);
-            }
+            atomicAdd(&hough_space[theta * n_rho + rho], 1);
         }
     }
 }
@@ -93,7 +89,7 @@ std::vector<int> tracking(const std::vector<TVector3>& positions)
         int max_index = std::distance(host_hough_space.begin(), max_it);
         int max_theta = max_index / n_rho;
         int max_rho   = max_index % n_rho - static_cast<int>((n_rho-1)/2);
-        // std::cout << track_id << ": " << n_rho << ", " << *max_it << ", " << host_x_data.size() << ", " << max_index << ", " << max_theta << ", " << max_rho << std::endl;
+        std::cout << track_id << ": " << n_rho << ", " << *max_it << ", " << host_x_data.size() << ", " << max_index << ", " << max_theta << ", " << max_rho << std::endl;
 
         // -- event selection ----------
         double bin_diff;
@@ -192,7 +188,7 @@ int main(int argc, char** argv) {
         if ( position.size() == 0) continue;
         
         // -- tracking and cal dedx -----
-        // std::vector<int> track_id_container = tracking(position);
+        std::vector<int> track_id_container = tracking(position);
 
     }
 
