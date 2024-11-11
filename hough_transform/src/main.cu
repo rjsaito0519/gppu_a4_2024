@@ -165,6 +165,10 @@ int main(int argc, char** argv) {
     // +--------------------------+
     // | prepare output root file |
     // +--------------------------+
+    TString save_name;
+    int dot_index = root_file_path.Last('.');
+    int sla_index = root_file_path.Last('/');
+    for (int i = sla_index+1; i < dot_index; i++) save_name += root_file_path[i];
     TString output_path = Form("./results/%s_output.root", save_name.Data());
     if (std::ifstream(output_path.Data())) std::remove(output_path.Data());
     TFile fout(output_path.Data(), "create");
@@ -238,8 +242,8 @@ int main(int argc, char** argv) {
                 pos_x.push_back( pos_container[index].X() );
                 pos_y.push_back( pos_container[index].Y() );
                 pos_z.push_back( pos_container[index].Z() );
-                pad_id.push_back(pad_and_de[i].first);
-                adc.push_back(pad_and_de[i].second);
+                pad_id.push_back(pad_and_de[index].first);
+                adc.push_back(pad_and_de[index].second);
                 sum_de += pad_and_de[index].second;
             }
 
