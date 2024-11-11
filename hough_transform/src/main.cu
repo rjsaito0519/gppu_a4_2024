@@ -8,9 +8,7 @@
 #include <cstdio> // std::remove
 #include <chrono> // std::chrono
 
-#include <thrust/device_vector.h>
-#include <thrust/extrema.h>
-#include <thrust/host_vector.h>
+#include <omp.h>
 
 #include <TFile.h>
 #include <TTree.h>
@@ -129,16 +127,45 @@ std::vector<std::vector<int>> tracking_cuda(const std::vector<TVector3>& pos_con
         int max_rho   = max_index % n_rho - static_cast<int>((n_rho-1)/2);
         auto end_time5 = std::chrono::high_resolution_clock::now();
         auto duration5 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time5 - start_time5).count();
-        std::cout << "max it1: " << duration5 << std::endl;
+        std::cout << "max_index" << max_index << ", max it1: " << duration5 << std::endl;
 
         auto start_time6 = std::chrono::high_resolution_clock::now();
-        auto _max_it = thrust::max_element(host_hough_space.begin(), host_hough_space.end());
-        int _max_index = std::distance(host_hough_space.begin(), _max_it);
+        
+        // OpenMPを使用して最大値とインデックスを探索
+        int max_value = -1;
+        max_index = -1;
+        #pragma omp parallel
+        {
+            int local_max = -1;
+            int local_index = -1;
+
+            // 各スレッドで部分的に最大値を探す
+            #pragma omp for nowait
+            for (int i = 0; i < host_hough_space.size(); ++i) {
+                if (host_hough_space[i] > local_max) {
+                    local_max = host_hough_space[i];
+                    local_index = i;
+                }
+            }
+
+            // 最大値とインデックスの結果をcriticalセクションで更新
+            #pragma omp critical
+            {
+                if (local_max > max_value) {
+                    max_value = local_max;
+                    max_index = local_index;
+                }
+                // 同じ最大値の場合、より小さいインデックスを保持
+                else if (local_max == max_value && local_index < max_index) {
+                    max_index = local_index;
+                }
+            }
+        }
         int _max_theta = _max_index / n_rho;
         int _max_rho   = _max_index % n_rho - static_cast<int>((n_rho-1)/2);
         auto end_time6 = std::chrono::high_resolution_clock::now();
         auto duration6 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time6 - start_time6).count();
-        std::cout << "max it2: " << duration6 << std::endl;
+        std::cout << "max_index" << max_index << ", max it2: " << duration6 << std::endl;
 
 
         // -- event selection ----------
@@ -230,6 +257,8 @@ int main(int argc, char** argv) {
         std::cerr << "Usage: " << argv[0] << " <path_to_root_file>" << std::endl;
         return 1;
     }
+
+    omp_set_num_threads(4); // 4スレッドで並列化
 
     // +----------------+
     // | load root file |
