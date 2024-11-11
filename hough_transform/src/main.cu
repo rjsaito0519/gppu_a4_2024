@@ -41,7 +41,7 @@ __global__ void houghTransformKernel(int *hough_space, const double *x_data, con
     }
 }
 
-std::vector<std::vector<int>> tracking(const std::vector<TVector3>& pos_container)
+std::vector<std::vector<int>> tracking_cuda(const std::vector<TVector3>& pos_container)
 {
     // --  prepare ----------
     int max_iter = pos_container.size();
@@ -51,7 +51,9 @@ std::vector<std::vector<int>> tracking(const std::vector<TVector3>& pos_containe
     std::vector<std::vector<int>> indices(10);
     int track_id = 0;
     while ( std::count(track_id_container.begin(), track_id_container.end(), -1) > 5 && track_id < 10) {
+
         auto start_time = std::chrono::high_resolution_clock::now();
+        
         // -- prepare data -----
         std::vector<double> host_x_data, host_z_data;
         double most_far_position = 0.0;
@@ -91,10 +93,6 @@ std::vector<std::vector<int>> tracking(const std::vector<TVector3>& pos_containe
         cudaFree(cuda_z_data);
         cudaFree(cuda_hough_space);
 
-        auto end_time = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
-        duration_container.push_back(duration);
-
         auto max_it = std::max_element(host_hough_space.begin(), host_hough_space.end());
         int max_index = std::distance(host_hough_space.begin(), max_it);
         int max_theta = max_index / n_rho;
@@ -117,6 +115,66 @@ std::vector<std::vector<int>> tracking(const std::vector<TVector3>& pos_containe
             }
         }
         track_id++;
+
+        auto end_time = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
+        duration_container.push_back(duration);
+    }
+
+    return indices;
+}
+
+std::vector<std::vector<int>> tracking_cpu(const std::vector<TVector3>& pos_container)
+{
+    // --  prepare ----------
+    int max_iter = pos_container.size();
+
+    // --  search track ----------
+    std::vector<int> track_id_container(max_iter, -1);
+    std::vector<std::vector<int>> indices(10);
+    int n_rho = 2*static_cast<int>(std::ceil(250.0*std::sqrt(2.0))) + 1; // |X|, |Z| maximum values are around 250. +1 mean rho = 0
+    int track_id = 0;
+    while ( std::count(track_id_container.begin(), track_id_container.end(), -1) > 5 && track_id < 10) {
+        auto start_time = std::chrono::high_resolution_clock::now();
+
+        // -- prepare data -----
+        TH2D h_hough("for_hough_transform", ";theta (deg.); r (mm)", 181, 0.0, 180.0, n_rho, -1.0*std::ceil(250.0*std::sqrt(2.0)), std::ceil(250.0*std::sqrt(2.0)));
+        for (int i = 0; i < max_iter; i++) if ( track_id_container[i] == -1 ) {
+            for (int theta = 0; theta <= 180; theta++) {
+                double radian = theta * M_PI / 180.0;
+                double rho = pos_container[i].Z()*std::cos(radian) + pos_container[i].X()*std::sin(radian);
+                h_hough->Fill(theta, rho);
+            }
+        }
+
+        int max_global_bin = h_hough->GetMaximumBin();
+        int max_x_bin, max_y_bin, max_z_bin;
+        h_hough->GetBinXYZ(max_global_bin, max_x_bin, max_y_bin, max_z_bin);
+        double max_theta = h_hough->GetXaxis()->GetBinCenter(max_x_bin);
+        std::cout << max_x_bin << ", " << max_theta << std::endl;
+        double max_rho   = h_hough->GetYaxis()->GetBinCenter(max_y_bin);
+
+        // -- event selection ----------
+        double bin_diff;
+        int max_diff = 4;
+        for (int i = 0; i < max_iter; i++) {
+            if ( track_id_container[i] != -1 ) continue;
+            bool within_circ = false;
+            for (int theta = max_theta-max_diff; theta <= max_theta+max_diff; theta++) {
+                double rho = std::cos( theta*TMath::DegToRad() )*pos_container[i].Z() + std::sin( theta*TMath::DegToRad() )*pos_container[i].X();
+                double diff = TMath::Abs( max_rho-rho ) + TMath::Abs( max_theta - theta );
+                if ( diff < max_diff ) within_circ = true;
+            }
+            if (within_circ) {
+                track_id_container[i] = track_id;
+                indices[track_id].push_back(i);
+            }
+        }
+        track_id++;
+
+        auto end_time = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
+        duration_container.push_back(duration);
     }
 
     return indices;
@@ -232,7 +290,9 @@ int main(int argc, char** argv) {
         
         // -- tracking and cal dedx -----
         duration_container.clear();
-        std::vector<std::vector<int>> indices = tracking(pos_container);
+        // std::vector<std::vector<int>> indices = tracking_cuda(pos_container);
+        std::vector<std::vector<int>> indices = tracking_cpu(pos_container);
+        
         for (Int_t track_id = 0; track_id < 10; track_id++ ) {
             int hit_num = indices[track_id].size();
             if (hit_num == 0) continue;
@@ -297,6 +357,7 @@ int main(int argc, char** argv) {
         }
         // if (*evnum >= 500) break;
     }
+    std::cout << std::endl; // for progress bar
 
     // +------------+
     // | Write data |
