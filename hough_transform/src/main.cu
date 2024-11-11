@@ -64,6 +64,9 @@ std::vector<int> tracking(const std::vector<TVector3>& positions)
         double *cuda_x_data, *cuda_z_data;
         int *cuda_hough_space;
         int n_rho = 2*static_cast<int>(std::ceil(most_far_position*std::sqrt(2.0))) + 1; // |X|, |Z| maximum values are around 250. +1 mean rho = 0
+
+        std::cout << most_far_position << ", " << n_rho << std::endl;
+
         cudaMalloc(&cuda_x_data, data_size * sizeof(double));
         cudaMalloc(&cuda_z_data, data_size * sizeof(double));
         cudaMalloc(&cuda_hough_space, 181 * n_rho * sizeof(int));
