@@ -146,16 +146,17 @@ std::vector<std::vector<int>> tracking_cpu(const std::vector<TVector3>& pos_cont
             for (int theta = 0; theta <= 180; theta++) {
                 double radian = theta * M_PI / 180.0;
                 double rho = pos_container[i].Z()*std::cos(radian) + pos_container[i].X()*std::sin(radian);
-                h_hough->Fill(theta, rho);
+                h_hough.Fill(theta, rho);
             }
         }
 
-        int max_global_bin = h_hough->GetMaximumBin();
+        int max_global_bin = h_hough.GetMaximumBin();
         int max_x_bin, max_y_bin, max_z_bin;
         h_hough->GetBinXYZ(max_global_bin, max_x_bin, max_y_bin, max_z_bin);
-        double max_theta = h_hough->GetXaxis()->GetBinCenter(max_x_bin);
+        double max_theta = h_hough.GetXaxis()->GetBinCenter(max_x_bin);
         std::cout << max_x_bin << ", " << max_theta << std::endl;
-        double max_rho   = h_hough->GetYaxis()->GetBinCenter(max_y_bin);
+        double max_rho   = h_hough.GetYaxis()->GetBinCenter(max_y_bin);
+        
 
         // -- event selection ----------
         double bin_diff;
