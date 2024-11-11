@@ -6,6 +6,7 @@
 #include <cuda_runtime.h> // CUDA runtime
 #include <fstream> // std::ifstream
 #include <cstdio> // std::remove
+#include <chrono> // std::chrono
 #include <TFile.h>
 #include <TTree.h>
 #include <TTreeReader.h>
@@ -49,6 +50,8 @@ std::vector<std::vector<int>> tracking(const std::vector<TVector3>& pos_containe
     int track_id = 0;
     while ( std::count(track_id_container.begin(), track_id_container.end(), -1) > 5 && track_id < 10) {
 
+        auto start_time = std::chrono::high_resolution_clock::now();
+
         // -- prepare data -----
         std::vector<double> host_x_data, host_z_data;
         double most_far_position = 0.0;
@@ -88,6 +91,9 @@ std::vector<std::vector<int>> tracking(const std::vector<TVector3>& pos_containe
         cudaFree(cuda_z_data);
         cudaFree(cuda_hough_space);
 
+        auto end_time = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+        std::cout << duration << std::endl;
 
         auto max_it = std::max_element(host_hough_space.begin(), host_hough_space.end());
         int max_index = std::distance(host_hough_space.begin(), max_it);
