@@ -64,9 +64,6 @@ std::vector<int> tracking(const std::vector<TVector3>& positions)
         double *cuda_x_data, *cuda_z_data;
         int *cuda_hough_space;
         int n_rho = 2*static_cast<int>(std::ceil(most_far_position*std::sqrt(2.0))) + 1; // |X|, |Z| maximum values are around 250. +1 mean rho = 0
-
-        std::cout << most_far_position << ", " << n_rho << std::endl;
-
         cudaMalloc(&cuda_x_data, data_size * sizeof(double));
         cudaMalloc(&cuda_z_data, data_size * sizeof(double));
         cudaMalloc(&cuda_hough_space, 181 * n_rho * sizeof(int));
@@ -95,7 +92,7 @@ std::vector<int> tracking(const std::vector<TVector3>& positions)
         int max_index = std::distance(host_hough_space.begin(), max_it);
         int max_theta = max_index / n_rho;
         int max_rho   = max_index % n_rho - static_cast<int>((n_rho-1)/2);
-        std::cout << track_id << ": " << n_rho << ", " << *max_it << ", " << max_index << ", " << max_theta << ", " << max_rho << std::endl;
+        std::cout << track_id << ": " << n_rho << ", " << *max_it << ", " << host_x_data.size() << ", " << max_index << ", " << max_theta << ", " << max_rho << std::endl;
 
         // -- event selection ----------
         double bin_diff;
