@@ -30,6 +30,7 @@ __global__ void houghTransformKernel(int *hough_space, const double *x_data, con
         for (int theta = 0; theta <= 180; ++theta) {
             double radian = theta * M_PI / 180.0;
             int rho = static_cast<int>( round(z*cosf(radian) + x*sinf(radian)) + (n_rho-1)/2 );
+            printf("x = %f, z = %f, theta = %d, rho = %d\n", x, z, theta, rho);
             if (rho >= 0 && rho < n_rho) {
                 atomicAdd(&hough_space[theta * n_rho + rho], 1);
             }
@@ -74,7 +75,7 @@ std::vector<int> tracking(const std::vector<TVector3>& positions)
 
         // Launch the kernel
         int threadsPerBlock = 256;
-        int blocksPerGrid = static_cast<int>( std::ceil(data_size/threadsPerBlock) );
+        int blocksPerGrid = (data_size + threadsPerBlock - 1) / threadsPerBlock;
         houghTransformKernel<<<blocksPerGrid, threadsPerBlock>>>(cuda_hough_space, cuda_x_data, cuda_z_data, data_size, n_rho);
 
         // Copy the result to the host
