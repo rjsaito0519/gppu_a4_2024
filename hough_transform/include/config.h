@@ -2,6 +2,7 @@
 #define CONFIG_H
 
 #include <string>
+#include <TString.h> // TStringのヘッダをインクルード
 
 struct config {
     TString root_file_path;
