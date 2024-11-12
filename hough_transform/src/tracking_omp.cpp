@@ -17,12 +17,11 @@ std::vector<std::vector<int>> tracking_openmp(const std::vector<TVector3>& pos_c
     while (std::count(track_id_container.begin(), track_id_container.end(), -1) > 5 && track_id < 10) {
         auto start_time = std::chrono::high_resolution_clock::now();
         
+        auto start_time1 = std::chrono::high_resolution_clock::now();
         // Initialize Hough space and local spaces for each thread
         std::vector<int> hough_space(n_rho * 181, 0);
         std::vector<std::vector<int>> local_hough_spaces(omp_get_max_threads(), std::vector<int>(n_rho * 181, 0));
-
         // Parallel processing of Hough transform using OpenMP
-        auto start_time1 = std::chrono::high_resolution_clock::now();
         #pragma omp parallel for
         for (int index = 0; index < max_iter; ++index) {
             int thread_id = omp_get_thread_num();

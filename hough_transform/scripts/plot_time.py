@@ -41,76 +41,164 @@ plt.rcParams["ytick.minor.size"] = 5                 #y軸補助目盛り線の�
 
 
 
-result = []
+# # +-----------------------------+
+# # | OpenMP vs std:max_element() |
+# # +-----------------------------+
 
+# result = []
 
-file = uproot.open(f"../results/cuda_008.root")
-tree = file["tree"].arrays(library="np")
+# file = uproot.open(f"../results/cuda_008.root")
+# tree = file["tree"].arrays(library="np")
 
-n_duration = len(tree["duration"][0])
+# n_duration = len(tree["duration"][0])
 
-data = []
-prev_evnum = -1
-for evnum, duration in zip(tree["evnum"], tree["duration"]):
-    if evnum != prev_evnum:
-        data.append(duration)
-        prev_evnum = evnum
-    else:
-        pass
+# data = []
+# prev_evnum = -1
+# for evnum, duration in zip(tree["evnum"], tree["duration"]):
+#     if evnum != prev_evnum:
+#         data.append(duration)
+#         prev_evnum = evnum
+#     else:
+#         pass
 
-data = np.array(data)
+# data = np.array(data)
 
-tmp_result = []
-for i in range(n_duration):
-    mean  = statistics.mean(data[:, i]*10**-6)
-    stdev = statistics.stdev(data[:, i]*10**-6)
+# tmp_result = []
+# for i in range(n_duration):
+#     mean  = statistics.mean(data[:, i]*10**-6)
+#     stdev = statistics.stdev(data[:, i]*10**-6)
     
-    time = uncertainties.ufloat(mean, stdev)
+#     time = uncertainties.ufloat(mean, stdev)
 
-    print(f"{time:.2u} [ms]")
-    tmp_result.append(mean)
-result.append(tmp_result)
+#     print(f"{time:.2u} [ms]")
+#     tmp_result.append(mean)
+# result.append(tmp_result)
 
-file = uproot.open(f"../results/cuda_008_omp.root")
-tree = file["tree"].arrays(library="np")
+# file = uproot.open(f"../results/cuda_008_omp.root")
+# tree = file["tree"].arrays(library="np")
 
-n_duration = len(tree["duration"][0])
+# n_duration = len(tree["duration"][0])
 
-data = []
-prev_evnum = -1
-for evnum, duration in zip(tree["evnum"], tree["duration"]):
-    if evnum != prev_evnum:
-        data.append(duration)
-        prev_evnum = evnum
-    else:
-        pass
+# data = []
+# prev_evnum = -1
+# for evnum, duration in zip(tree["evnum"], tree["duration"]):
+#     if evnum != prev_evnum:
+#         data.append(duration)
+#         prev_evnum = evnum
+#     else:
+#         pass
 
-data = np.array(data)
+# data = np.array(data)
 
-print("---")
+# print("---")
 
-tmp_result = []
-for i in range(n_duration):
-    mean  = statistics.mean(data[:, i]*10**-6)
-    stdev = statistics.stdev(data[:, i]*10**-6)
+# tmp_result = []
+# for i in range(n_duration):
+#     mean  = statistics.mean(data[:, i]*10**-6)
+#     stdev = statistics.stdev(data[:, i]*10**-6)
     
-    time = uncertainties.ufloat(mean, stdev)
+#     time = uncertainties.ufloat(mean, stdev)
 
-    print(f"{time:.2u} [ms]")
-    tmp_result.append(mean)
-result.append(tmp_result)
+#     print(f"{time:.2u} [ms]")
+#     tmp_result.append(mean)
+# result.append(tmp_result)
 
-print(result)
+# print(result)
 
 
-sys.exit()
+# # +------+
+# # | CUDA |
+# # +------+
+
+# result = []
+# for pow in range(1, 10):
+#     n_thread = 2**pow
+#     print(n_thread)
+#     # file = uproot.open(f"../results/cpu.root")
+#     file = uproot.open(f"../results/cuda_{n_thread:0=3}.root")
+#     tree = file["tree"].arrays(library="np")
+
+#     n_duration = len(tree["duration"][0])
+
+#     data = []
+#     prev_evnum = -1
+#     for evnum, duration in zip(tree["evnum"], tree["duration"]):
+#         if evnum != prev_evnum:
+#             data.append(duration)
+#             prev_evnum = evnum
+#         else:
+#             pass
+
+#     data = np.array(data)
+
+#     tmp_result = [n_thread]
+#     for i in range(n_duration):
+#         mean  = statistics.mean(data[:, i]*10**-6)
+#         stdev = statistics.stdev(data[:, i]*10**-6)
+        
+#         time = uncertainties.ufloat(mean, stdev)
+
+#         print(f"{time:.2u} [ms]")
+#         tmp_result.append(mean)
+#     result.append(tmp_result)
+
+# result = np.array(result)
+# label = [
+#     "prepare data",
+#     "cudaMalloc",
+#     "cudaMemcpy",
+#     "houghTransform",
+#     "cudaMemcpy",
+#     "std::max_element",
+#     "event selection",
+#     "total"
+# ]
+
+# fig = plt.figure(figsize=(10, 6))
+# ax  = fig.add_subplot(111)
+# for i in range(len(result[0])-1):
+#     ax.plot(result[:, 0], result[:, i+1], "--o", label = label[i])
+# ax.set_yscale("log")
+# ax.set_xlabel("# of threads")
+# ax.set_ylabel("time [ms]")
+# ax.legend(loc='upper left', fontsize = 18, bbox_to_anchor=(1.0, 1))
+# plt.subplots_adjust(left = 0.13, right = 0.7, top = 0.98, bottom = 0.15)
+# plt.savefig("./cuda_n_thread.png", dpi=600, transparent=True)
+# plt.show()
+
+
+
+# fig = plt.figure(figsize=(10, 6))
+# ax  = fig.add_subplot(111)
+# for i in range(len(result[0])-1):
+#     ax.plot(result[:, 0], result[:, i+1], "--o", label = label[i])
+# ax.set_yscale("log")
+# ax.set_xlabel("# of threads")
+# ax.set_ylabel("time [ms]")
+# ax.set_ylim(0.1, 0.3)
+
+# # 指定した目盛りのみ表示
+# custom_ticks = [0.1, 0.2, 0.3]  # 表示したいy軸の目盛り
+# ax.set_yticks(custom_ticks)  # y軸の目盛りを指定
+# ax.get_yaxis().set_major_formatter(plt.ScalarFormatter())  # 指定目盛りの数値ラベルのみ表示
+
+# ax.legend(loc='upper left', fontsize = 18, bbox_to_anchor=(1.0, 1))
+# plt.subplots_adjust(left = 0.13, right = 0.7, top = 0.98, bottom = 0.15)
+# plt.savefig("./cuda_n_thread_zoom.png", dpi=600, transparent=True)
+# plt.show()
+
+
+
+
+# +--------+
+# | OpenMP |
+# +--------+
 
 result = []
-for pow in range(1, 10):
-    n_thread = 2**pow
+for n_thread in [2, 4, 8, 16]:
     print(n_thread)
     # file = uproot.open(f"../results/cpu.root")
-    file = uproot.open(f"../results/cuda_{n_thread:0=3}.root")
+    file = uproot.open(f"../results/omp_{n_thread:0=2}.root")
     tree = file["tree"].arrays(library="np")
 
     n_duration = len(tree["duration"][0])
@@ -139,12 +227,8 @@ for pow in range(1, 10):
 
 result = np.array(result)
 label = [
-    "prepare data",
-    "cudaMalloc",
-    "cudaMemcpy",
     "houghTransform",
-    "cudaMemcpy",
-    "std::max_element",
+    "find maximum",
     "event selection",
     "total"
 ]
@@ -158,26 +242,26 @@ ax.set_xlabel("# of threads")
 ax.set_ylabel("time [ms]")
 ax.legend(loc='upper left', fontsize = 18, bbox_to_anchor=(1.0, 1))
 plt.subplots_adjust(left = 0.13, right = 0.7, top = 0.98, bottom = 0.15)
-plt.savefig("./cuda_n_thread.png", dpi=600, transparent=True)
+# plt.savefig("./omp_n_thread.png", dpi=600, transparent=True)
 plt.show()
 
 
 
-fig = plt.figure(figsize=(10, 6))
-ax  = fig.add_subplot(111)
-for i in range(len(result[0])-1):
-    ax.plot(result[:, 0], result[:, i+1], "--o", label = label[i])
-ax.set_yscale("log")
-ax.set_xlabel("# of threads")
-ax.set_ylabel("time [ms]")
-ax.set_ylim(0.1, 0.3)
+# fig = plt.figure(figsize=(10, 6))
+# ax  = fig.add_subplot(111)
+# for i in range(len(result[0])-1):
+#     ax.plot(result[:, 0], result[:, i+1], "--o", label = label[i])
+# ax.set_yscale("log")
+# ax.set_xlabel("# of threads")
+# ax.set_ylabel("time [ms]")
+# ax.set_ylim(0.1, 0.3)
 
-# 指定した目盛りのみ表示
-custom_ticks = [0.1, 0.2, 0.3]  # 表示したいy軸の目盛り
-ax.set_yticks(custom_ticks)  # y軸の目盛りを指定
-ax.get_yaxis().set_major_formatter(plt.ScalarFormatter())  # 指定目盛りの数値ラベルのみ表示
+# # 指定した目盛りのみ表示
+# custom_ticks = [0.1, 0.2, 0.3]  # 表示したいy軸の目盛り
+# ax.set_yticks(custom_ticks)  # y軸の目盛りを指定
+# ax.get_yaxis().set_major_formatter(plt.ScalarFormatter())  # 指定目盛りの数値ラベルのみ表示
 
-ax.legend(loc='upper left', fontsize = 18, bbox_to_anchor=(1.0, 1))
-plt.subplots_adjust(left = 0.13, right = 0.7, top = 0.98, bottom = 0.15)
-plt.savefig("./cuda_n_thread_zoom.png", dpi=600, transparent=True)
-plt.show()
+# ax.legend(loc='upper left', fontsize = 18, bbox_to_anchor=(1.0, 1))
+# plt.subplots_adjust(left = 0.13, right = 0.7, top = 0.98, bottom = 0.15)
+# plt.savefig("./cuda_n_thread_zoom.png", dpi=600, transparent=True)
+# plt.show()
