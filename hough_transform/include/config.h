@@ -4,7 +4,7 @@
 #include <string>
 
 struct config {
-    std::string root_file_path;
+    TString root_file_path;
     std::string which_method;
     int omp_n_threads;
     int cuda_n_threads;

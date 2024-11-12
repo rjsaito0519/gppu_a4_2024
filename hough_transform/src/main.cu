@@ -41,7 +41,7 @@ void load_config(const std::string& config_file) {
     nlohmann::json json_config;
     file >> json_config;
     
-    conf.root_file_path = json_config.at("root_file_path").get<std::string>();
+    conf.root_file_path = TString(json_config.at("root_file_path").get<std::string>());
     conf.which_method   = json_config.at("which_method").get<std::string>();
     conf.omp_n_threads  = json_config.value("omp_n_threads", 4);
     conf.cuda_n_threads = json_config.value("cuda_n_threads", 256);
@@ -58,9 +58,9 @@ int main(int argc, char** argv) {
     // +----------------+
     // | load root file |
     // +----------------+
-    auto *f = new TFile(conf.root_file_path.c_str());
+    auto *f = new TFile(conf.root_file_path.Data());
     if (!f || f->IsZombie()) {
-        std::cerr << "Error: Could not open file : " << root_file_path << std::endl;
+        std::cerr << "Error: Could not open file : " << conf.root_file_path << std::endl;
         return 1;
     }
     TTreeReader reader("tpc", f);
