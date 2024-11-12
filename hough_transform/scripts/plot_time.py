@@ -195,7 +195,7 @@ plt.rcParams["ytick.minor.size"] = 5                 #y軸補助目盛り線の�
 # +--------+
 
 result = []
-for n_thread in [2, 4, 8, 16]:
+for n_thread in [2, 4, 8, 12, 16, 20]:
     print(n_thread)
     # file = uproot.open(f"../results/cpu.root")
     file = uproot.open(f"../results/omp_{n_thread:0=2}.root")
@@ -242,26 +242,5 @@ ax.set_xlabel("# of threads")
 ax.set_ylabel("time [ms]")
 ax.legend(loc='upper left', fontsize = 18, bbox_to_anchor=(1.0, 1))
 plt.subplots_adjust(left = 0.13, right = 0.7, top = 0.98, bottom = 0.15)
-# plt.savefig("./omp_n_thread.png", dpi=600, transparent=True)
+plt.savefig("./omp_n_thread.png", dpi=600, transparent=True)
 plt.show()
-
-
-
-# fig = plt.figure(figsize=(10, 6))
-# ax  = fig.add_subplot(111)
-# for i in range(len(result[0])-1):
-#     ax.plot(result[:, 0], result[:, i+1], "--o", label = label[i])
-# ax.set_yscale("log")
-# ax.set_xlabel("# of threads")
-# ax.set_ylabel("time [ms]")
-# ax.set_ylim(0.1, 0.3)
-
-# # 指定した目盛りのみ表示
-# custom_ticks = [0.1, 0.2, 0.3]  # 表示したいy軸の目盛り
-# ax.set_yticks(custom_ticks)  # y軸の目盛りを指定
-# ax.get_yaxis().set_major_formatter(plt.ScalarFormatter())  # 指定目盛りの数値ラベルのみ表示
-
-# ax.legend(loc='upper left', fontsize = 18, bbox_to_anchor=(1.0, 1))
-# plt.subplots_adjust(left = 0.13, right = 0.7, top = 0.98, bottom = 0.15)
-# plt.savefig("./cuda_n_thread_zoom.png", dpi=600, transparent=True)
-# plt.show()
