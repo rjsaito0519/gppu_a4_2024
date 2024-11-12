@@ -40,6 +40,69 @@ plt.rcParams["xtick.minor.size"] = 5                 #x軸補助目盛り線の�
 plt.rcParams["ytick.minor.size"] = 5                 #y軸補助目盛り線の長さ
 
 
+
+result = []
+
+
+file = uproot.open(f"../results/cuda_008.root")
+tree = file["tree"].arrays(library="np")
+
+n_duration = len(tree["duration"][0])
+
+data = []
+prev_evnum = -1
+for evnum, duration in zip(tree["evnum"], tree["duration"]):
+    if evnum != prev_evnum:
+        data.append(duration)
+        prev_evnum = evnum
+    else:
+        pass
+
+data = np.array(data)
+
+tmp_result = []
+for i in range(n_duration):
+    mean  = statistics.mean(data[:, i]*10**-6)
+    stdev = statistics.stdev(data[:, i]*10**-6)
+    
+    time = uncertainties.ufloat(mean, stdev)
+
+    print(f"{time:.2u} [ms]")
+    tmp_result.append(mean)
+result.append(tmp_result)
+
+file = uproot.open(f"../results/cuda_008_omp.root")
+tree = file["tree"].arrays(library="np")
+
+n_duration = len(tree["duration"][0])
+
+data = []
+prev_evnum = -1
+for evnum, duration in zip(tree["evnum"], tree["duration"]):
+    if evnum != prev_evnum:
+        data.append(duration)
+        prev_evnum = evnum
+    else:
+        pass
+
+data = np.array(data)
+
+tmp_result = []
+for i in range(n_duration):
+    mean  = statistics.mean(data[:, i]*10**-6)
+    stdev = statistics.stdev(data[:, i]*10**-6)
+    
+    time = uncertainties.ufloat(mean, stdev)
+
+    print(f"{time:.2u} [ms]")
+    tmp_result.append(mean)
+result.append(tmp_result)
+
+print(result)
+
+
+sys.exit()
+
 result = []
 for pow in range(1, 10):
     n_thread = 2**pow
