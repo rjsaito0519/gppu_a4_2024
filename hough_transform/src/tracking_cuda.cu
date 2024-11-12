@@ -33,10 +33,8 @@ std::vector<std::vector<int>> tracking_cuda(const std::vector<TVector3>& pos_con
     int track_id = 0;
 
     while (std::count(track_id_container.begin(), track_id_container.end(), -1) > 5 && track_id < 10) {
-        auto start_time = std::chrono::high_resolution_clock::now();
         
         // -- prepare data -----
-        auto start_time0 = std::chrono::high_resolution_clock::now();
         std::vector<double> host_x_data, host_z_data;
         double most_far_position = 0.0;
         for (int i = 0; i < max_iter; i++) {
@@ -48,51 +46,30 @@ std::vector<std::vector<int>> tracking_cuda(const std::vector<TVector3>& pos_con
                 }
             }
         }
-        auto end_time0 = std::chrono::high_resolution_clock::now();
-        auto duration0 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time0 - start_time0).count();
-        // std::cout << "data preparation: " << duration0 << " ns" << std::endl;
 
         // Allocate CUDA device memory
         int data_size = host_x_data.size();
         double *cuda_x_data, *cuda_z_data;
         int *cuda_hough_space;
         int n_rho = 2 * static_cast<int>(std::ceil(most_far_position * std::sqrt(2.0))) + 1;
-
-        auto start_time1 = std::chrono::high_resolution_clock::now();
         cudaMalloc(&cuda_x_data, data_size * sizeof(double));
         cudaMalloc(&cuda_z_data, data_size * sizeof(double));
         cudaMalloc(&cuda_hough_space, 181 * n_rho * sizeof(int));
-        auto end_time1 = std::chrono::high_resolution_clock::now();
-        auto duration1 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time1 - start_time1).count();
-        // std::cout << "cudaMalloc: " << duration1 << " ns" << std::endl;
 
         // Copy data from host to device
-        auto start_time2 = std::chrono::high_resolution_clock::now();
         cudaMemcpy(cuda_x_data, host_x_data.data(), data_size * sizeof(double), cudaMemcpyHostToDevice);
         cudaMemcpy(cuda_z_data, host_z_data.data(), data_size * sizeof(double), cudaMemcpyHostToDevice);
         cudaMemset(cuda_hough_space, 0, 181 * n_rho * sizeof(int));
-        auto end_time2 = std::chrono::high_resolution_clock::now();
-        auto duration2 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time2 - start_time2).count();
-        // std::cout << "cudaMemset: " << duration2 << " ns" << std::endl;
 
         // Launch the kernel
         int threads_per_block = 256;
         int blocks_per_grid = (data_size + threads_per_block - 1) / threads_per_block;
-
-        auto start_time3 = std::chrono::high_resolution_clock::now();
         houghTransformKernel<<<blocks_per_grid, threads_per_block>>>(cuda_hough_space, cuda_x_data, cuda_z_data, data_size, n_rho);
         cudaDeviceSynchronize();
-        auto end_time3 = std::chrono::high_resolution_clock::now();
-        auto duration3 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time3 - start_time3).count();
-        // std::cout << "houghTransformKernel: " << duration3 << " ns" << std::endl;
 
         // Copy the result to the host
         std::vector<int> host_hough_space(181 * n_rho);
-        auto start_time4 = std::chrono::high_resolution_clock::now();
         cudaMemcpy(host_hough_space.data(), cuda_hough_space, 181 * n_rho * sizeof(int), cudaMemcpyDeviceToHost);
-        auto end_time4 = std::chrono::high_resolution_clock::now();
-        auto duration4 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time4 - start_time4).count();
-        // std::cout << "cudaMemcpy: " << duration4 << " ns" << std::endl;
 
         // Free device memory
         cudaFree(cuda_x_data);

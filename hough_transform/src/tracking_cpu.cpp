@@ -5,6 +5,7 @@
 #include <TVector3.h>
 #include <TH2D.h>
 #include <TMath.h>
+#include "config.h"
 #include "tracking_cpu.h"
 
 std::vector<std::vector<int>> tracking_cpu(const std::vector<TVector3>& pos_container, std::vector<int>& duration_container) {
@@ -18,7 +19,7 @@ std::vector<std::vector<int>> tracking_cpu(const std::vector<TVector3>& pos_cont
     while (std::count(track_id_container.begin(), track_id_container.end(), -1) > 5 && track_id < 10) {
         auto start_time = std::chrono::high_resolution_clock::now();
 
-        // -- prepare data -----
+        auto start_time1 = std::chrono::high_resolution_clock::now();
         TH2D h_hough("for_hough_transform", ";theta (deg.); r (mm)", 180, -0.5, 180.0 - 0.5, n_rho, -1.0 * std::ceil(250.0 * std::sqrt(2.0)), std::ceil(250.0 * std::sqrt(2.0)));
         for (int i = 0; i < max_iter; i++) {
             if (track_id_container[i] == -1) {
@@ -29,22 +30,22 @@ std::vector<std::vector<int>> tracking_cpu(const std::vector<TVector3>& pos_cont
                 }
             }
         }
-
-        auto start_time1 = std::chrono::high_resolution_clock::now();
-        int max_global_bin = h_hough.GetMaximumBin();
         auto end_time1 = std::chrono::high_resolution_clock::now();
         auto duration1 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time1 - start_time1).count();
-        // std::cout << "h_hough.GetMaximumBin(): " << duration1 << " ns" << std::endl;
 
+        auto start_time2 = std::chrono::high_resolution_clock::now();
+        int max_global_bin = h_hough.GetMaximumBin();
         int max_x_bin, max_y_bin, max_z_bin;
         h_hough.GetBinXYZ(max_global_bin, max_x_bin, max_y_bin, max_z_bin);
         double max_theta = h_hough.GetXaxis()->GetBinCenter(max_x_bin);
         double max_rho = h_hough.GetYaxis()->GetBinCenter(max_y_bin);
+        auto end_time2 = std::chrono::high_resolution_clock::now();
+        auto duration2 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time2 - start_time2).count();
 
-        std::cout << h_hough.GetXaxis()->GetBinWidth(1) << ", " << h_hough.GetYaxis()->GetBinWidth(1) << std::endl;
 
         // Event selection
-        int max_diff = 4;
+        auto start_time3 = std::chrono::high_resolution_clock::now();
+        int max_diff = conf.hough_max_diff;
         for (int i = 0; i < max_iter; i++) {
             if (track_id_container[i] != -1) continue;
             bool within_circ = false;
@@ -58,12 +59,20 @@ std::vector<std::vector<int>> tracking_cpu(const std::vector<TVector3>& pos_cont
                 indices[track_id].push_back(i);
             }
         }
-        track_id++;
+        auto end_time3 = std::chrono::high_resolution_clock::now();
+        auto duration3 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time3 - start_time3).count();
+
 
         auto end_time = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
-        std::cout << "total (cpu): " << duration << " ns" << std::endl;
-        duration_container.push_back(duration);
+        if (track_id == 0) {
+            duration_container.push_back(duration1);
+            duration_container.push_back(duration2);
+            duration_container.push_back(duration3);
+            duration_container.push_back(duration);
+        }
+
+        track_id++;
     }
 
     return indices;

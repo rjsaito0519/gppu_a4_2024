@@ -50,13 +50,17 @@ void load_config(const std::string& config_file) {
     conf.which_method   = json_config.at("which_method").get<std::string>();
     conf.omp_n_threads  = json_config.value("omp_n_threads", 4);
     conf.cuda_n_threads = json_config.value("cuda_n_threads", 256);
-
+    conf.hough_max_diff = json_config.value("hough_max_diff", 5);
+    conf.n_loop         = json_config.value("n_loop", 500);
+    
     // 設定内容の確認
     std::cout << "Configuration loaded:" << std::endl;
     std::cout << "  Root file path   : " << conf.root_file_path << std::endl;
     std::cout << "  Method           : " << conf.which_method << std::endl;
     std::cout << "  OMP Threads      : " << conf.omp_n_threads << std::endl;
     std::cout << "  CUDA Threads     : " << conf.cuda_n_threads << std::endl;
+    std::cout << "  hough_max_diff   : " << conf.hough_max_diff << std::endl;
+    std::cout << "  n_loop           : " << conf.n_loop << std::endl;
 }
 
 int main(int argc, char** argv) {
@@ -85,17 +89,12 @@ int main(int argc, char** argv) {
     TTreeReaderValue<std::vector<int>> rowTpc(reader, "rowTpc");
     TTreeReaderValue<std::vector<double>> deTpc(reader, "deTpc");
     TTreeReaderValue<std::vector<double>> tTpc(reader, "tTpc");
-    
-
-    // +-------------------+
-    // | prepare histogram |
-    // +-------------------+
-    auto h_tdc = new TH1D("tdc", "tdc", 2000, 0.0, 200.0);
 
 
     // +-----------------------------------+
     // | fit tdc and determine time window |
     // +-----------------------------------+
+    auto h_tdc = new TH1D("tdc", "tdc", 2000, 0.0, 200.0);
     reader.Restart();
     while (reader.Next()){
         if (*nhTpc < 400) for (int i = 0; i < *nhTpc; i++) h_tdc->Fill( (*tTpc)[i] );
@@ -236,7 +235,7 @@ int main(int argc, char** argv) {
             delete g_pos;
             delete f_pos;
         }
-        if (*evnum >= 500) break;
+        if (*evnum >= conf.n_loop) break;
     }
     std::cout << std::endl; // for progress bar
 

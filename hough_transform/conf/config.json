@@ -2,5 +2,7 @@
     "root_file_path": "data/run00043_TPCHit_rms15_de40.root",
     "which_method": "cpu",
     "omp_n_threads": 4,
-    "cuda_n_threads": 256
+    "cuda_n_threads": 256,
+    "hough_max_diff": 5,
+    "n_loop": 500
 }

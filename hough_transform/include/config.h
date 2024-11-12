@@ -9,6 +9,8 @@ struct config {
     std::string which_method;
     int omp_n_threads;
     int cuda_n_threads;
+    int hough_max_diff;
+    int n_loop;
 };
 
 extern config conf; // 他のファイルからアクセス可能にするために extern 宣言
