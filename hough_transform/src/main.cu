@@ -145,10 +145,8 @@ int main(int argc, char** argv) {
         // -- tracking and cal dedx -----
         duration_container.clear();
         // std::vector<std::vector<int>> indices = tracking_cuda(pos_container);
-        // std::vector<std::vector<int>> indices = tracking_cpu(pos_container);
-        std::vector<std::vector<int>> cuda_indices = tracking_cuda(pos_container);
-        std::vector<std::vector<int>> cpu_indices = tracking_cpu(pos_container);
-        std::vector<std::vector<int>> indices = cuda_indices;
+        std::vector<std::vector<int>> indices = tracking_cpu(pos_container);
+
         for (Int_t track_id = 0; track_id < 10; track_id++ ) {
             int hit_num = indices[track_id].size();
             if (hit_num == 0) continue;
