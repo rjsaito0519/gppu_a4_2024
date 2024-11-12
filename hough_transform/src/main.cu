@@ -38,6 +38,11 @@ config conf;
 
 void load_config(const std::string& config_file) {
     std::ifstream file(config_file);
+    if (!file) {
+        std::cerr << "Error: Could not open config file: " << config_file << std::endl;
+        exit(1);
+    }
+    
     nlohmann::json json_config;
     file >> json_config;
     
@@ -45,14 +50,23 @@ void load_config(const std::string& config_file) {
     conf.which_method   = json_config.at("which_method").get<std::string>();
     conf.omp_n_threads  = json_config.value("omp_n_threads", 4);
     conf.cuda_n_threads = json_config.value("cuda_n_threads", 256);
+
+    // 設定内容の確認
+    std::cout << "Configuration loaded:" << std::endl;
+    std::cout << "  Root file path   : " << conf.root_file_path << std::endl;
+    std::cout << "  Method           : " << conf.which_method << std::endl;
+    std::cout << "  OMP Threads      : " << conf.omp_n_threads << std::endl;
+    std::cout << "  CUDA Threads     : " << conf.cuda_n_threads << std::endl;
 }
 
 int main(int argc, char** argv) {
 
     // -- load conf file ------
-    std::string config_file = (argc > 1) ? argv[1] : "config.json";
+    std::string config_file = (argc > 1) ? argv[1] : "conf/config.json";
     load_config(config_file);
 
+
+    // -- set omp n_thread -----
     omp_set_num_threads(conf.omp_n_threads);
 
     // +----------------+
