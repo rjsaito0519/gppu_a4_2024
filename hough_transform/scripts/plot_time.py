@@ -87,6 +87,8 @@ for evnum, duration in zip(tree["evnum"], tree["duration"]):
 
 data = np.array(data)
 
+print("---")
+
 tmp_result = []
 for i in range(n_duration):
     mean  = statistics.mean(data[:, i]*10**-6)

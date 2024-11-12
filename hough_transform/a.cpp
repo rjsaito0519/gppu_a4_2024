@@ -3,7 +3,6 @@
 #include <chrono>
 #include <iostream>
 #include <omp.h>
-#include "config.h"
 #include <TVector3.h>
 
 std::vector<std::vector<int>> tracking_openmp(const std::vector<TVector3>& pos_container, std::vector<int>& duration_container) {
@@ -12,17 +11,18 @@ std::vector<std::vector<int>> tracking_openmp(const std::vector<TVector3>& pos_c
     std::vector<int> track_id_container(max_iter, -1);
     std::vector<std::vector<int>> indices(10);
     int track_id = 0;
-    int n_rho = 2 * static_cast<int>(std::ceil(250.0 * std::sqrt(2.0))) + 1;
 
     while (std::count(track_id_container.begin(), track_id_container.end(), -1) > 5 && track_id < 10) {
         auto start_time = std::chrono::high_resolution_clock::now();
         
+        int n_rho = 2 * static_cast<int>(std::ceil(250.0 * std::sqrt(2.0))) + 1;
+
         // Initialize Hough space and local spaces for each thread
         std::vector<int> hough_space(n_rho * 181, 0);
         std::vector<std::vector<int>> local_hough_spaces(omp_get_max_threads(), std::vector<int>(n_rho * 181, 0));
 
         // Parallel processing of Hough transform using OpenMP
-        auto start_time1 = std::chrono::high_resolution_clock::now();
+        auto start_time3 = std::chrono::high_resolution_clock::now();
         #pragma omp parallel for
         for (int index = 0; index < max_iter; ++index) {
             int thread_id = omp_get_thread_num();
@@ -42,17 +42,17 @@ std::vector<std::vector<int>> tracking_openmp(const std::vector<TVector3>& pos_c
         for (int i = 0; i < n_rho * 181; ++i) {
             int sum = 0;
             #pragma omp simd reduction(+:sum)
-            // #pragma omp parallel reduction(+:sum)
             for (int t = 0; t < omp_get_max_threads(); ++t) {
                 sum += local_hough_spaces[t][i];
             }
             hough_space[i] = sum;
         }
-        auto end_time1 = std::chrono::high_resolution_clock::now();
-        auto duration1 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time1 - start_time1).count();
+        auto end_time3 = std::chrono::high_resolution_clock::now();
+        auto duration3 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time3 - start_time3).count();
+        // std::cout << "Hough transform (OpenMP): " << duration3 << " ns" << std::endl;
 
         
-        auto start_time2 = std::chrono::high_resolution_clock::now();        
+        auto start_time7 = std::chrono::high_resolution_clock::now();        
         // Find the maximum value
         int max_value = -1;
         int max_index = -1;
@@ -89,14 +89,16 @@ std::vector<std::vector<int>> tracking_openmp(const std::vector<TVector3>& pos_c
                 max_index = local_pair.second;
             }
         }
+
         int max_theta = max_index / n_rho;
         int max_rho   = max_index % n_rho - static_cast<int>((n_rho-1)/2);
-        auto end_time2 = std::chrono::high_resolution_clock::now();
-        auto duration2 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time2 - start_time2).count();
+        auto end_time7 = std::chrono::high_resolution_clock::now();
+        auto duration7 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time7 - start_time7).count();
+        // std::cout << "max_element3: " << duration7 << " ns" << std::endl;
+        // std::cout << "max_index, " << max_index << std::endl;
 
         // Event selection
-        auto start_time3 = std::chrono::high_resolution_clock::now();        
-        int max_diff = conf.hough_max_diff;
+        int max_diff = 4;
         for (int i = 0; i < max_iter; i++) {
             if (track_id_container[i] != -1) continue;
             bool within_circ = false;
@@ -110,19 +112,13 @@ std::vector<std::vector<int>> tracking_openmp(const std::vector<TVector3>& pos_c
                 indices[track_id].push_back(i);
             }
         }
-        auto end_time3 = std::chrono::high_resolution_clock::now();
-        auto duration3 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time3 - start_time3).count();
+        track_id++;
 
+        // Measure the total time for this iteration
         auto end_time = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
-        if (track_id == 0) {
-            duration_container.push_back(duration1);
-            duration_container.push_back(duration2);
-            duration_container.push_back(duration3);
-            duration_container.push_back(duration);
-        }
-        
-        track_id++;
+        std::cout << "Total iteration time (OpenMP): " << duration << " ns" << std::endl;
+        duration_container.push_back(duration);
     }
 
     return indices;
