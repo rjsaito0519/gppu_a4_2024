@@ -155,13 +155,14 @@ std::vector<std::vector<int>> tracking_cuda(const std::vector<TVector3>& pos_con
 
 
         // Event selection
-        int max_diff = 4;
+        int max_diff = 5;
         for (int i = 0; i < max_iter; i++) {
             if (track_id_container[i] != -1) continue;
             bool within_circ = false;
             for (int theta = max_theta - max_diff; theta <= max_theta + max_diff; theta++) {
                 double rho = std::cos(theta * M_PI / 180.0) * pos_container[i].Z() + std::sin(theta * M_PI / 180.0) * pos_container[i].X();
                 double diff = std::abs(max_rho - rho) + std::abs(max_theta - theta);
+                std::cout << std::abs(max_rho - rho) << ", " << std::abs(max_theta - theta) << std::endl;
                 if (diff < max_diff) within_circ = true;
             }
             if (within_circ) {
