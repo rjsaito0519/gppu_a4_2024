@@ -38,11 +38,15 @@ std::vector<std::vector<int>> tracking_openmp(const std::vector<TVector3>& pos_c
             }
         }
     
-        // Aggregate local spaces of each thread into the global Hough space
-        for (int t = 0; t < omp_get_max_threads(); ++t) {
-            for (int i = 0; i < n_rho * 181; ++i) {
-                hough_space[i] += local_hough_spaces[t][i];
+        // Aggregate local spaces using SIMD optimization
+        #pragma omp parallel for
+        for (int i = 0; i < n_rho * 181; ++i) {
+            int sum = 0;
+            #pragma omp simd reduction(+:sum)
+            for (int t = 0; t < omp_get_max_threads(); ++t) {
+                sum += local_hough_spaces[t][i];
             }
+            hough_space[i] = sum;
         }
         auto end_time3 = std::chrono::high_resolution_clock::now();
         auto duration3 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time3 - start_time3).count();
@@ -64,9 +68,9 @@ std::vector<std::vector<int>> tracking_openmp(const std::vector<TVector3>& pos_c
 
             // Each thread finds the maximum value in its assigned range
             #pragma omp for nowait
-            for (int i = 0; i < host_hough_space.size(); ++i) {
-                if (host_hough_space[i] > local_max) {
-                    local_max = host_hough_space[i];
+            for (int i = 0; i < hough_space.size(); ++i) {
+                if (hough_space[i] > local_max) {
+                    local_max = hough_space[i];
                     local_index = i;
                 }
             }
