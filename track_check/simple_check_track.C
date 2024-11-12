@@ -70,7 +70,7 @@ void draw_track(Int_t n_rand)
     // +---------------------+
     // | Fill event and draw |
     // +---------------------+
-    for (Int_t i = 0; i < *nhTpc; i++) {
+    for (Int_t i = 0, n_hit = (*pad_id).size(); i < n_hit; i++) {
         h_tpc_adc2d->SetBinContent((*pad_id)[i]+1, (*adc)[i]);
     }
 
