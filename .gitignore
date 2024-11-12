@@ -1,1 +1,3 @@
 track_check/root/*
+hough_transform/results/*
+hough_transform/scripts/*.png

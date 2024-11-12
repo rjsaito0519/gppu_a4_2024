@@ -32,10 +32,8 @@ std::vector<std::vector<int>> tracking_cuda(const std::vector<TVector3>& pos_con
     int track_id = 0;
 
     while (std::count(track_id_container.begin(), track_id_container.end(), -1) > 5 && track_id < 10) {
-        auto start_time = std::chrono::high_resolution_clock::now();
         
         // -- prepare data -----
-        auto start_time1 = std::chrono::high_resolution_clock::now();
         std::vector<double> host_x_data, host_z_data;
         double most_far_position = 0.0;
         for (int i = 0; i < max_iter; i++) {
@@ -47,64 +45,47 @@ std::vector<std::vector<int>> tracking_cuda(const std::vector<TVector3>& pos_con
                 }
             }
         }
-        auto end_time1 = std::chrono::high_resolution_clock::now();
-        auto duration1 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time1 - start_time1).count();
 
         // Allocate CUDA device memory
         int data_size = host_x_data.size();
         double *cuda_x_data, *cuda_z_data;
         int *cuda_hough_space;
         int n_rho = 2 * static_cast<int>(std::ceil(most_far_position * std::sqrt(2.0))) + 1;
-
-        auto start_time2 = std::chrono::high_resolution_clock::now();
         cudaMalloc(&cuda_x_data, data_size * sizeof(double));
         cudaMalloc(&cuda_z_data, data_size * sizeof(double));
         cudaMalloc(&cuda_hough_space, 181 * n_rho * sizeof(int));
-        auto end_time2 = std::chrono::high_resolution_clock::now();
-        auto duration2 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time2 - start_time2).count();
 
         // Copy data from host to device
-        auto start_time3 = std::chrono::high_resolution_clock::now();
         cudaMemcpy(cuda_x_data, host_x_data.data(), data_size * sizeof(double), cudaMemcpyHostToDevice);
         cudaMemcpy(cuda_z_data, host_z_data.data(), data_size * sizeof(double), cudaMemcpyHostToDevice);
         cudaMemset(cuda_hough_space, 0, 181 * n_rho * sizeof(int));
-        auto end_time3 = std::chrono::high_resolution_clock::now();
-        auto duration3 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time3 - start_time3).count();
 
         // Launch the kernel
         int threads_per_block = conf.cuda_n_threads;
         int blocks_per_grid = (data_size + threads_per_block - 1) / threads_per_block;
-        auto start_time4 = std::chrono::high_resolution_clock::now();
         houghTransformKernel<<<blocks_per_grid, threads_per_block>>>(cuda_hough_space, cuda_x_data, cuda_z_data, data_size, n_rho);
         cudaDeviceSynchronize();
-        auto end_time4 = std::chrono::high_resolution_clock::now();
-        auto duration4 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time4 - start_time4).count();
 
         // Copy the result to the host
-        auto start_time5 = std::chrono::high_resolution_clock::now();
         std::vector<int> host_hough_space(181 * n_rho);
         cudaMemcpy(host_hough_space.data(), cuda_hough_space, 181 * n_rho * sizeof(int), cudaMemcpyDeviceToHost);
-        auto end_time5 = std::chrono::high_resolution_clock::now();
-        auto duration5 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time5 - start_time5).count();
 
         // Free device memory
         cudaFree(cuda_x_data);
         cudaFree(cuda_z_data);
         cudaFree(cuda_hough_space);
 
-        // // -- find maximum index -----
-        // auto start_time6 = std::chrono::high_resolution_clock::now();
-        // auto max_it = std::max_element(host_hough_space.begin(), host_hough_space.end());
-        // int max_index = std::distance(host_hough_space.begin(), max_it);
-        // int max_theta = max_index / n_rho;
-        // int max_rho = max_index % n_rho - static_cast<int>((n_rho - 1) / 2);
-        // auto end_time6 = std::chrono::high_resolution_clock::now();
-        // auto duration6 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time6 - start_time6).count();
+        auto max_it = std::max_element(host_hough_space.begin(), host_hough_space.end());
+        int max_index = std::distance(host_hough_space.begin(), max_it);
+        int max_theta = max_index / n_rho;
+        int max_rho = max_index % n_rho - static_cast<int>((n_rho - 1) / 2);
 
 
-        auto start_time6 = std::chrono::high_resolution_clock::now();
+        auto start_time7 = std::chrono::high_resolution_clock::now();        
+        // OpenMPを使用して最大値とインデックスを探索
         int max_value = -1;
         int max_index = -1;
+        // Prepare local maximums as pairs (value, index) for each thread
         std::vector<std::pair<int, int>> local_max_pairs(omp_get_max_threads(), std::make_pair(-1, -1));
 
         #pragma omp parallel
@@ -122,6 +103,7 @@ std::vector<std::vector<int>> tracking_cuda(const std::vector<TVector3>& pos_con
                 }
             }
 
+            // Store the local max value and index as a pair for this thread
             local_max_pairs[thread_id] = std::make_pair(local_max, local_index);
         }
 
@@ -131,20 +113,22 @@ std::vector<std::vector<int>> tracking_cuda(const std::vector<TVector3>& pos_con
                 max_value = local_pair.first;
                 max_index = local_pair.second;
             }
+            // If the maximum values are the same, keep the smaller index
             else if (local_pair.first == max_value && local_pair.second < max_index) {
                 max_index = local_pair.second;
             }
         }
 
         int max_theta = max_index / n_rho;
-        int max_rho = max_index % n_rho - static_cast<int>((n_rho - 1) / 2);
-        auto end_time6 = std::chrono::high_resolution_clock::now();
-        auto duration6 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time6 - start_time6).count();
+        int max_rho   = max_index % n_rho - static_cast<int>((n_rho-1)/2);
+        auto end_time7 = std::chrono::high_resolution_clock::now();
+        auto duration7 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time7 - start_time7).count();
+        // std::cout << "max_element3: " << duration7 << " ns" << std::endl;
+        // std::cout << "max_index, " << max_index << std::endl;
 
 
         // Event selection
-        auto start_time7 = std::chrono::high_resolution_clock::now();
-        int max_diff = conf.hough_max_diff;
+        int max_diff = 4;
         for (int i = 0; i < max_iter; i++) {
             if (track_id_container[i] != -1) continue;
             bool within_circ = false;
@@ -158,24 +142,13 @@ std::vector<std::vector<int>> tracking_cuda(const std::vector<TVector3>& pos_con
                 indices[track_id].push_back(i);
             }
         }
-        auto end_time7 = std::chrono::high_resolution_clock::now();
-        auto duration7 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time7 - start_time7).count();
+        track_id++;
 
         // 全体の計測
         auto end_time = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
-        if (track_id == 0) {
-            duration_container.push_back(duration1);
-            duration_container.push_back(duration2);
-            duration_container.push_back(duration3);
-            duration_container.push_back(duration4);
-            duration_container.push_back(duration5);
-            duration_container.push_back(duration6);
-            duration_container.push_back(duration7);
-            duration_container.push_back(duration);
-        }
-
-        track_id++;
+        std::cout << "total: " << duration << " ns" << std::endl;
+        duration_container.push_back(duration);
     }
 
     return indices;
