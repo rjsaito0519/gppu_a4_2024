@@ -114,7 +114,44 @@ std::vector<std::vector<int>> tracking_cuda(const std::vector<TVector3>& pos_con
         // OpenMPを使用して最大値とインデックスを探索
         int max_value = -1;
         max_index = -1;
+        #pragma omp parallel
+        {
+            int local_max = -1;
+            int local_index = -1;
+            // 各スレッドで部分的に最大値を探す
+            #pragma omp for nowait
+            for (int i = 0; i < host_hough_space.size(); ++i) {
+                if (host_hough_space[i] > local_max) {
+                    local_max = host_hough_space[i];
+                    local_index = i;
+                }
+            }
 
+            // 最大値とインデックスの結果をcriticalセクションで更新
+            #pragma omp critical
+            {
+                if (local_max > max_value) {
+                    max_value = local_max;
+                    max_index = local_index;
+                }
+                // 同じ最大値の場合、より小さいインデックスを保持
+                else if (local_max == max_value && local_index < max_index) {
+                    max_index = local_index;
+                }
+            }
+        }
+        int _max_theta = max_index / n_rho;
+        int _max_rho   = max_index % n_rho - static_cast<int>((n_rho-1)/2);
+        auto end_time6 = std::chrono::high_resolution_clock::now();
+        auto duration6 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time6 - start_time6).count();
+        std::cout << "max_element2: " << duration6 << " ns" << std::endl;
+        std::cout << "max_index, " << max_index << std::endl;
+
+
+        auto start_time7 = std::chrono::high_resolution_clock::now();        
+        // OpenMPを使用して最大値とインデックスを探索
+        max_value = -1;
+        max_index = -1;
         // Prepare local maximums as pairs (value, index) for each thread
         std::vector<std::pair<int, int>> local_max_pairs(omp_get_max_threads(), std::make_pair(-1, -1));
 
@@ -149,13 +186,12 @@ std::vector<std::vector<int>> tracking_cuda(const std::vector<TVector3>& pos_con
             }
         }
 
-        int _max_theta = max_index / n_rho;
-        int _max_rho   = max_index % n_rho - static_cast<int>((n_rho-1)/2);
-        auto end_time6 = std::chrono::high_resolution_clock::now();
-        auto duration6 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time6 - start_time6).count();
-        std::cout << "max_element2: " << duration6 << " ns" << std::endl;
+        int _max_theta2 = max_index / n_rho;
+        int _max_rho2   = max_index % n_rho - static_cast<int>((n_rho-1)/2);
+        auto end_time7 = std::chrono::high_resolution_clock::now();
+        auto duration7 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time7 - start_time7).count();
+        std::cout << "max_element3: " << duration7 << " ns" << std::endl;
         std::cout << "max_index, " << max_index << std::endl;
-
 
 
         // Event selection
