@@ -3,8 +3,10 @@
 #include <cmath>
 #include <chrono>
 #include <iostream>
+#include <omp.h>
 #include <TVector3.h>
 #include "tracking_cuda.h"
+
 
 // CUDAカーネルの定義
 __global__ void houghTransformKernel(int *hough_space, const float *x_data, const float *z_data, int data_size, int n_rho) {
@@ -103,6 +105,48 @@ std::vector<std::vector<int>> tracking_cuda(const std::vector<TVector3>& pos_con
         auto end_time5 = std::chrono::high_resolution_clock::now();
         auto duration5 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time5 - start_time5).count();
         std::cout << "max_element: " << duration5 << " ns" << std::endl;
+
+
+
+        auto start_time6 = std::chrono::high_resolution_clock::now();
+        
+        // OpenMPを使用して最大値とインデックスを探索
+        int max_value = -1;
+        max_index = -1;
+        #pragma omp parallel
+        {
+            int local_max = -1;
+            int local_index = -1;
+
+            // 各スレッドで部分的に最大値を探す
+            #pragma omp for nowait
+            for (int i = 0; i < host_hough_space.size(); ++i) {
+                if (host_hough_space[i] > local_max) {
+                    local_max = host_hough_space[i];
+                    local_index = i;
+                }
+            }
+
+            // 最大値とインデックスの結果をcriticalセクションで更新
+            #pragma omp critical
+            {
+                if (local_max > max_value) {
+                    max_value = local_max;
+                    max_index = local_index;
+                }
+                // 同じ最大値の場合、より小さいインデックスを保持
+                else if (local_max == max_value && local_index < max_index) {
+                    max_index = local_index;
+                }
+            }
+        }
+        int _max_theta = _max_index / n_rho;
+        int _max_rho   = _max_index % n_rho - static_cast<int>((n_rho-1)/2);
+        auto end_time6 = std::chrono::high_resolution_clock::now();
+        auto duration6 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time6 - start_time6).count();
+        std::cout << "max_index" << max_index << ", max it2: " << duration6 << std::endl;
+
+
 
         // Event selection
         int max_diff = 4;
