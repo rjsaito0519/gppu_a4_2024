@@ -41,6 +41,8 @@ std::vector<std::vector<int>> tracking_cpu(const std::vector<TVector3>& pos_cont
         double max_theta = h_hough.GetXaxis()->GetBinCenter(max_x_bin);
         double max_rho = h_hough.GetYaxis()->GetBinCenter(max_y_bin);
 
+        std::cout << h_hough.GetXaxis()->GetBinWidth(1) << ", " << h_hough.GetYaxis()->GetBinWidth(1) << std::endl;
+
         // Event selection
         int max_diff = 4;
         for (int i = 0; i < max_iter; i++) {
