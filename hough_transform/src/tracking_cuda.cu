@@ -114,12 +114,17 @@ std::vector<std::vector<int>> tracking_cuda(const std::vector<TVector3>& pos_con
         // OpenMPを使用して最大値とインデックスを探索
         int max_value = -1;
         max_index = -1;
+
+        // Prepare local maximums as pairs (value, index) for each thread
+        std::vector<std::pair<int, int>> local_max_pairs(omp_get_max_threads(), std::make_pair(-1, -1));
+
         #pragma omp parallel
         {
+            int thread_id = omp_get_thread_num();
             int local_max = -1;
             int local_index = -1;
 
-            // 各スレッドで部分的に最大値を探す
+            // Each thread finds the maximum value in its assigned range
             #pragma omp for nowait
             for (int i = 0; i < host_hough_space.size(); ++i) {
                 if (host_hough_space[i] > local_max) {
@@ -128,19 +133,22 @@ std::vector<std::vector<int>> tracking_cuda(const std::vector<TVector3>& pos_con
                 }
             }
 
-            // 最大値とインデックスの結果をcriticalセクションで更新
-            #pragma omp critical
-            {
-                if (local_max > max_value) {
-                    max_value = local_max;
-                    max_index = local_index;
-                }
-                // 同じ最大値の場合、より小さいインデックスを保持
-                else if (local_max == max_value && local_index < max_index) {
-                    max_index = local_index;
-                }
+            // Store the local max value and index as a pair for this thread
+            local_max_pairs[thread_id] = std::make_pair(local_max, local_index);
+        }
+
+        // Final aggregation to find the overall maximum and index
+        for (const auto& local_pair : local_max_pairs) {
+            if (local_pair.first > max_value) {
+                max_value = local_pair.first;
+                max_index = local_pair.second;
+            }
+            // If the maximum values are the same, keep the smaller index
+            else if (local_pair.first == max_value && local_pair.second < max_index) {
+                max_index = local_pair.second;
             }
         }
+
         int _max_theta = max_index / n_rho;
         int _max_rho   = max_index % n_rho - static_cast<int>((n_rho-1)/2);
         auto end_time6 = std::chrono::high_resolution_clock::now();
