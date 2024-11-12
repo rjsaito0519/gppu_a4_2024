@@ -64,7 +64,7 @@ void draw_track(Int_t n_rand)
     // +-------------------+
     // | Prepare histogram |
     // +-------------------+
-    auto *h_tpc_adc2d = new TH2Poly("h_tpc_adc2d", Form("TPC ADC (evnum: %d);Z;X", n), -270.0, 270.0, -270.0, 270.0);
+    auto *h_tpc_adc2d = new TH2Poly("h_tpc_adc2d", Form("TPC ADC (evnum: %d);Z;X", *evnum), -270.0, 270.0, -270.0, 270.0);
     TPC_pad_template(h_tpc_adc2d);
 
     // +---------------------+
