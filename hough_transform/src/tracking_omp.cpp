@@ -32,7 +32,6 @@ std::vector<std::vector<int>> tracking_openmp(const std::vector<TVector3>& pos_c
                 for (int theta = 0; theta <= 180; ++theta) {
                     float radian = theta * M_PI / 180.0;
                     int rho = static_cast<int>(std::round(z * std::cos(radian) + x * std::sin(radian)) + (n_rho - 1) / 2);
-                    if (rho < 0 || n_rho <= rho) std::cout << "-------------------------------------------------" << std::endl;
                     local_hough_spaces[thread_id][theta * n_rho + rho] += 1;
                 }
             }
@@ -50,7 +49,7 @@ std::vector<std::vector<int>> tracking_openmp(const std::vector<TVector3>& pos_c
         }
         auto end_time3 = std::chrono::high_resolution_clock::now();
         auto duration3 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time3 - start_time3).count();
-        std::cout << "Hough transform (OpenMP): " << duration3 << " ns" << std::endl;
+        // std::cout << "Hough transform (OpenMP): " << duration3 << " ns" << std::endl;
 
         
         auto start_time7 = std::chrono::high_resolution_clock::now();        
@@ -95,8 +94,8 @@ std::vector<std::vector<int>> tracking_openmp(const std::vector<TVector3>& pos_c
         int max_rho   = max_index % n_rho - static_cast<int>((n_rho-1)/2);
         auto end_time7 = std::chrono::high_resolution_clock::now();
         auto duration7 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time7 - start_time7).count();
-        std::cout << "max_element3: " << duration7 << " ns" << std::endl;
-        std::cout << "max_index, " << max_index << std::endl;
+        // std::cout << "max_element3: " << duration7 << " ns" << std::endl;
+        // std::cout << "max_index, " << max_index << std::endl;
 
         // Event selection
         int max_diff = 4;

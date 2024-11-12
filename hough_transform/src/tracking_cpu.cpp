@@ -34,7 +34,7 @@ std::vector<std::vector<int>> tracking_cpu(const std::vector<TVector3>& pos_cont
         int max_global_bin = h_hough.GetMaximumBin();
         auto end_time1 = std::chrono::high_resolution_clock::now();
         auto duration1 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time1 - start_time1).count();
-        std::cout << "h_hough.GetMaximumBin(): " << duration1 << " ns" << std::endl;
+        // std::cout << "h_hough.GetMaximumBin(): " << duration1 << " ns" << std::endl;
 
         int max_x_bin, max_y_bin, max_z_bin;
         h_hough.GetBinXYZ(max_global_bin, max_x_bin, max_y_bin, max_z_bin);
@@ -60,7 +60,7 @@ std::vector<std::vector<int>> tracking_cpu(const std::vector<TVector3>& pos_cont
 
         auto end_time = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
-        std::cout << "total: " << duration << " ns" << std::endl;
+        std::cout << "total (cpu): " << duration << " ns" << std::endl;
         duration_container.push_back(duration);
     }
 

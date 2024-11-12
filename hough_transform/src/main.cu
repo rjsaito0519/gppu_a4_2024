@@ -39,7 +39,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    omp_set_num_threads(8); // 4スレッドで並列化
+    omp_set_num_threads(4); // 4スレッドで並列化
 
     // +----------------+
     // | load root file |
