@@ -30,8 +30,6 @@
 #include "tracking_cuda.h"
 #include "tracking_cpu.h"
 
-static std::vector<int> duration_container;
-
 int main(int argc, char** argv) {
 
     // -- check argument ------
@@ -93,7 +91,7 @@ int main(int argc, char** argv) {
     TTree tracking_tree("tree", ""); 
 
     // -- prepare root file branch -----
-    std::vector<int> pad_id;
+    std::vector<int> pad_i, duration_container;
     std::vector<double> pos_x, pos_y, pos_z, adc;
     double a_pos, b_pos, a_time, b_time, track_length, redchi2_pos, redchi2_time, sum_de, angle_pos, angle_time, dedx;
     int hit_num, evnum_buf;
@@ -144,8 +142,8 @@ int main(int argc, char** argv) {
         
         // -- tracking and cal dedx -----
         duration_container.clear();
-        std::vector<std::vector<int>> indices = tracking_cuda(pos_container);
-        std::vector<std::vector<int>> indices_cpu = tracking_cpu(pos_container);
+        std::vector<std::vector<int>> indices = tracking_cuda(pos_container, duration_container);
+        std::vector<std::vector<int>> indices_cpu = tracking_cpu(pos_container, duration_container);
 
         for (Int_t track_id = 0; track_id < 10; track_id++ ) {
             int hit_num = indices[track_id].size();

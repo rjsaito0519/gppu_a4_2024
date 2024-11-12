@@ -7,7 +7,7 @@
 #include <TMath.h>
 #include "tracking_cpu.h"
 
-std::vector<std::vector<int>> tracking_cpu(const std::vector<TVector3>& pos_container) {
+std::vector<std::vector<int>> tracking_cpu(const std::vector<TVector3>& pos_container, std::vector<int>& duration_container) {
     // -- prepare ----------
     int max_iter = pos_container.size();
     std::vector<int> track_id_container(max_iter, -1);
