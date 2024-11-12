@@ -145,7 +145,7 @@ std::vector<std::vector<int>> tracking_cuda(const std::vector<TVector3>& pos_con
         int _max_rho   = max_index % n_rho - static_cast<int>((n_rho-1)/2);
         auto end_time6 = std::chrono::high_resolution_clock::now();
         auto duration6 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time6 - start_time6).count();
-        std::cout << "max_element2: " << duration5 << " ns" << std::endl;
+        std::cout << "max_element2: " << duration6 << " ns" << std::endl;
         std::cout << "max_index, " << max_index << std::endl;
 
 
