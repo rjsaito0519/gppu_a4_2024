@@ -158,6 +158,7 @@ std::vector<std::vector<int>> tracking_cuda(const std::vector<TVector3>& pos_con
         #pragma omp parallel
         {
             int thread_id = omp_get_thread_num();
+            std::cout << thread_id << std::endl;
             int local_max = -1;
             int local_index = -1;
 
