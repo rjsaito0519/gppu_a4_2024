@@ -91,7 +91,7 @@ int main(int argc, char** argv) {
     TTree tracking_tree("tree", ""); 
 
     // -- prepare root file branch -----
-    std::vector<int> pad_i, duration_container;
+    std::vector<int> pad_id, duration_container;
     std::vector<double> pos_x, pos_y, pos_z, adc;
     double a_pos, b_pos, a_time, b_time, track_length, redchi2_pos, redchi2_time, sum_de, angle_pos, angle_time, dedx;
     int hit_num, evnum_buf;
