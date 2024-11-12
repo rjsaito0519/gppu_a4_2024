@@ -7,6 +7,7 @@
 #include <fstream> // std::ifstream
 #include <cstdio> // std::remove
 #include <chrono> // std::chrono
+#include <nlohmann/json.hpp>
 
 #include <omp.h>
 
@@ -24,6 +25,7 @@
 #include <TBox.h>
 #include <TVector3.h>
 
+#include "config.h"
 #include "progress_bar.h"
 #include "fit_tTpc.h"
 #include "pad_helper.h"
@@ -31,22 +33,32 @@
 #include "tracking_cpu.h"
 #include "tracking_omp.h"
 
+
+config conf;
+
+void load_config(const std::string& config_file) {
+    std::ifstream file(config_file);
+    nlohmann::json json_config;
+    file >> json_config;
+    
+    conf.root_file_path = json_config.at("root_file_path").get<std::string>();
+    conf.which_method   = json_config.at("which_method").get<std::string>();
+    conf.omp_n_threads  = json_config.value("omp_n_threads", 4);
+    conf.cuda_n_threads = json_config.value("cuda_n_threads", 256);
+}
+
 int main(int argc, char** argv) {
 
-    // -- check argument ------
-    if (argc != 2) {
-        std::cerr << "Usage: " << argv[0] << " <path_to_root_file>" << std::endl;
-        return 1;
-    }
+    // -- load conf file ------
+    std::string config_file = (argc > 1) ? argv[1] : "config.json";
+    load_config(config_file);
 
-    omp_set_num_threads(4); // 4スレッドで並列化
+    omp_set_num_threads(conf.omp_n_threads);
 
     // +----------------+
     // | load root file |
     // +----------------+
-    const TString root_file_path = argv[1];
-
-    auto *f = new TFile(root_file_path.Data());
+    auto *f = new TFile(conf.root_file_path.c_str());
     if (!f || f->IsZombie()) {
         std::cerr << "Error: Could not open file : " << root_file_path << std::endl;
         return 1;
@@ -83,9 +95,9 @@ int main(int argc, char** argv) {
     // | prepare output root file |
     // +--------------------------+
     TString save_name;
-    int dot_index = root_file_path.Last('.');
-    int sla_index = root_file_path.Last('/');
-    for (int i = sla_index+1; i < dot_index; i++) save_name += root_file_path[i];
+    int dot_index = conf.root_file_path.Last('.');
+    int sla_index = conf.root_file_path.Last('/');
+    for (int i = sla_index+1; i < dot_index; i++) save_name += conf.root_file_path[i];
     TString output_path = Form("./results/%s_output.root", save_name.Data());
     if (std::ifstream(output_path.Data())) std::remove(output_path.Data());
     TFile fout(output_path.Data(), "create");
@@ -143,13 +155,10 @@ int main(int argc, char** argv) {
         
         // -- tracking and cal dedx -----
         duration_container.clear();
-        // std::vector<std::vector<int>> indices = tracking_cuda(pos_container, duration_container);
-        // std::cout << "------" << std::endl;
-        std::vector<std::vector<int>> indices = tracking_cpu(pos_container, duration_container);
-        std::cout << "------" << std::endl;
-        // std::vector<std::vector<int>> indices_omp = tracking_openmp(pos_container, duration_container);
-        // std::cout << "------" << std::endl;
-        
+        std::vector<std::vector<int>> indices;
+        if      (conf.which_method == "cuda") indices = tracking_cuda(pos_container, duration_container);
+        else if (conf.which_method == "cpu")  indices = tracking_cpu(pos_container, duration_container);
+        else if (conf.which_method == "omp")  indices = tracking_openmp(pos_container, duration_container); 
 
         for (Int_t track_id = 0; track_id < 10; track_id++ ) {
             int hit_num = indices[track_id].size();

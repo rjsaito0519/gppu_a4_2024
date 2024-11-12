@@ -5,7 +5,9 @@
 #include <iostream>
 #include <omp.h>
 #include <TVector3.h>
+#include "config.h"
 #include "tracking_cuda.h"
+
 
 
 // CUDAカーネルの定義
@@ -74,11 +76,11 @@ std::vector<std::vector<int>> tracking_cuda(const std::vector<TVector3>& pos_con
         // std::cout << "cudaMemset: " << duration2 << " ns" << std::endl;
 
         // Launch the kernel
-        int threadsPerBlock = 256;
-        int blocksPerGrid = (data_size + threadsPerBlock - 1) / threadsPerBlock;
+        int threads_per_block = 256;
+        int blocks_per_grid = (data_size + threads_per_block - 1) / threads_per_block;
 
         auto start_time3 = std::chrono::high_resolution_clock::now();
-        houghTransformKernel<<<blocksPerGrid, threadsPerBlock>>>(cuda_hough_space, cuda_x_data, cuda_z_data, data_size, n_rho);
+        houghTransformKernel<<<blocks_per_grid, threads_per_block>>>(cuda_hough_space, cuda_x_data, cuda_z_data, data_size, n_rho);
         cudaDeviceSynchronize();
         auto end_time3 = std::chrono::high_resolution_clock::now();
         auto duration3 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time3 - start_time3).count();

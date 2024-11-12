@@ -1,0 +1,6 @@
+{
+    "root_file_path": "data/run00043_TPCHit_rms15_de40.root",
+    "which_method": "cpu",
+    "omp_n_threads": 4,
+    "cuda_n_threads": 256
+}
