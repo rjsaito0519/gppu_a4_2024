@@ -21,7 +21,7 @@ __global__ void houghTransformKernel(int *hough_space, const float *x_data, cons
     }
 }
 
-std::vector<std::vector<int>> tracking_cuda(const std::vector<TVector3>& pos_container, std::vector<int>& duration_container) {
+std::vector<std::vector<int>> tracking_cuda(const std::vector<TVector3>& pos_container) {
     // --  prepare ----------
     int max_iter = pos_container.size();
     std::vector<int> track_id_container(max_iter, -1);
