@@ -42,7 +42,7 @@ std::vector<std::vector<int>> tracking_openmp(const std::vector<TVector3>& pos_c
         for (int i = 0; i < n_rho * 181; ++i) {
             int sum = 0;
             #pragma omp simd reduction(+:sum)
-            // #pragma omp parallel reduction(+:sum)
+            // #pragma omp parallel for reduction(+:sum)
             for (int t = 0; t < omp_get_max_threads(); ++t) {
                 sum += local_hough_spaces[t][i];
             }
@@ -121,7 +121,7 @@ std::vector<std::vector<int>> tracking_openmp(const std::vector<TVector3>& pos_c
             duration_container.push_back(duration3);
             duration_container.push_back(duration);
         }
-        
+
         track_id++;
     }
 

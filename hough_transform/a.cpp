@@ -17,12 +17,9 @@ std::vector<std::vector<int>> tracking_openmp(const std::vector<TVector3>& pos_c
         
         int n_rho = 2 * static_cast<int>(std::ceil(250.0 * std::sqrt(2.0))) + 1;
 
-        // Initialize Hough space and local spaces for each thread
         std::vector<int> hough_space(n_rho * 181, 0);
         std::vector<std::vector<int>> local_hough_spaces(omp_get_max_threads(), std::vector<int>(n_rho * 181, 0));
 
-        // Parallel processing of Hough transform using OpenMP
-        auto start_time3 = std::chrono::high_resolution_clock::now();
         #pragma omp parallel for
         for (int index = 0; index < max_iter; ++index) {
             int thread_id = omp_get_thread_num();
@@ -37,7 +34,6 @@ std::vector<std::vector<int>> tracking_openmp(const std::vector<TVector3>& pos_c
             }
         }
     
-        // Aggregate local spaces using SIMD optimization
         #pragma omp parallel for
         for (int i = 0; i < n_rho * 181; ++i) {
             int sum = 0;
@@ -47,9 +43,6 @@ std::vector<std::vector<int>> tracking_openmp(const std::vector<TVector3>& pos_c
             }
             hough_space[i] = sum;
         }
-        auto end_time3 = std::chrono::high_resolution_clock::now();
-        auto duration3 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time3 - start_time3).count();
-        // std::cout << "Hough transform (OpenMP): " << duration3 << " ns" << std::endl;
 
         
         auto start_time7 = std::chrono::high_resolution_clock::now();        
