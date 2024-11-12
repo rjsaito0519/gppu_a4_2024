@@ -9,14 +9,14 @@
 
 
 // CUDAカーネルの定義
-__global__ void houghTransformKernel(int *hough_space, const float *x_data, const float *z_data, int data_size, int n_rho) {
+__global__ void houghTransformKernel(int *hough_space, const double *x_data, const double *z_data, int data_size, int n_rho) {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < data_size) {
-        float x = x_data[index];
-        float z = z_data[index];
+        double x = x_data[index];
+        double z = z_data[index];
 
         for (int theta = 0; theta <= 180; ++theta) {
-            float radian = theta * M_PI / 180.0;
+            double radian = theta * M_PI / 180.0;
             int rho = static_cast<int>(round(z * cosf(radian) + x * sinf(radian)) + (n_rho - 1) / 2);
             atomicAdd(&hough_space[theta * n_rho + rho], 1);
         }
@@ -35,8 +35,8 @@ std::vector<std::vector<int>> tracking_cuda(const std::vector<TVector3>& pos_con
         
         // -- prepare data -----
         auto start_time0 = std::chrono::high_resolution_clock::now();
-        std::vector<float> host_x_data, host_z_data;
-        float most_far_position = 0.0;
+        std::vector<double> host_x_data, host_z_data;
+        double most_far_position = 0.0;
         for (int i = 0; i < max_iter; i++) {
             if (track_id_container[i] == -1) {
                 host_x_data.push_back(pos_container[i].X());
@@ -52,13 +52,13 @@ std::vector<std::vector<int>> tracking_cuda(const std::vector<TVector3>& pos_con
 
         // Allocate CUDA device memory
         int data_size = host_x_data.size();
-        float *cuda_x_data, *cuda_z_data;
+        double *cuda_x_data, *cuda_z_data;
         int *cuda_hough_space;
         int n_rho = 2 * static_cast<int>(std::ceil(most_far_position * std::sqrt(2.0))) + 1;
 
         auto start_time1 = std::chrono::high_resolution_clock::now();
-        cudaMalloc(&cuda_x_data, data_size * sizeof(float));
-        cudaMalloc(&cuda_z_data, data_size * sizeof(float));
+        cudaMalloc(&cuda_x_data, data_size * sizeof(double));
+        cudaMalloc(&cuda_z_data, data_size * sizeof(double));
         cudaMalloc(&cuda_hough_space, 181 * n_rho * sizeof(int));
         auto end_time1 = std::chrono::high_resolution_clock::now();
         auto duration1 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time1 - start_time1).count();
@@ -66,8 +66,8 @@ std::vector<std::vector<int>> tracking_cuda(const std::vector<TVector3>& pos_con
 
         // Copy data from host to device
         auto start_time2 = std::chrono::high_resolution_clock::now();
-        cudaMemcpy(cuda_x_data, host_x_data.data(), data_size * sizeof(float), cudaMemcpyHostToDevice);
-        cudaMemcpy(cuda_z_data, host_z_data.data(), data_size * sizeof(float), cudaMemcpyHostToDevice);
+        cudaMemcpy(cuda_x_data, host_x_data.data(), data_size * sizeof(double), cudaMemcpyHostToDevice);
+        cudaMemcpy(cuda_z_data, host_z_data.data(), data_size * sizeof(double), cudaMemcpyHostToDevice);
         cudaMemset(cuda_hough_space, 0, 181 * n_rho * sizeof(int));
         auto end_time2 = std::chrono::high_resolution_clock::now();
         auto duration2 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time2 - start_time2).count();
@@ -158,7 +158,6 @@ std::vector<std::vector<int>> tracking_cuda(const std::vector<TVector3>& pos_con
         #pragma omp parallel
         {
             int thread_id = omp_get_thread_num();
-            std::cout << thread_id << std::endl;
             int local_max = -1;
             int local_index = -1;
 

@@ -15,21 +15,7 @@ std::vector<std::vector<int>> tracking_openmp(const std::vector<TVector3>& pos_c
     while (std::count(track_id_container.begin(), track_id_container.end(), -1) > 5 && track_id < 10) {
         auto start_time = std::chrono::high_resolution_clock::now();
         
-        // -- Data preparation ----- 
-        std::vector<float> host_x_data, host_z_data;
-        float most_far_position = 0.0;
-        for (int i = 0; i < max_iter; i++) {
-            if (track_id_container[i] == -1) {
-                host_x_data.push_back(pos_container[i].X());
-                host_z_data.push_back(pos_container[i].Z());
-                if (std::abs(pos_container[i].X()) > most_far_position || std::abs(pos_container[i].Z()) > most_far_position) {
-                    most_far_position = std::max(std::abs(pos_container[i].X()), std::abs(pos_container[i].Z()));
-                }
-            }
-        }
-
-        int data_size = host_x_data.size();
-        int n_rho = 2 * static_cast<int>(std::ceil(most_far_position * std::sqrt(2.0))) + 1;
+        int n_rho = 2 * static_cast<int>(std::ceil(250.0 * std::sqrt(2.0))) + 1;
 
         // Initialize Hough space and local spaces for each thread
         std::vector<int> hough_space(n_rho * 181, 0);
@@ -38,62 +24,75 @@ std::vector<std::vector<int>> tracking_openmp(const std::vector<TVector3>& pos_c
         // Parallel processing of Hough transform using OpenMP
         auto start_time3 = std::chrono::high_resolution_clock::now();
         #pragma omp parallel for
-        for (int index = 0; index < data_size; ++index) {
+        for (int index = 0; index < max_iter; ++index) {
             int thread_id = omp_get_thread_num();
-            float x = host_x_data[index];
-            float z = host_z_data[index];
-
-            for (int theta = 0; theta <= 180; ++theta) {
-                float radian = theta * M_PI / 180.0;
-                int rho = static_cast<int>(round(z * cosf(radian) + x * sinf(radian)) + (n_rho - 1) / 2);
-                local_hough_spaces[thread_id][theta * n_rho + rho] += 1;
+            if (track_id_container[index] == -1) {
+                double x = pos_container[index].X();
+                double z = pos_container[index].Z();
+                for (int theta = 0; theta <= 180; ++theta) {
+                    float radian = theta * M_PI / 180.0;
+                    int rho = static_cast<int>(std::round(z * std::cos(radian) + x * std::sin(radian)) + (n_rho - 1) / 2);
+                    if (rho < 0 || n_rho <= rho) std::cout << "-------------------------------------------------" << std::endl;
+                    local_hough_spaces[thread_id][theta * n_rho + rho] += 1;
+                }
             }
         }
-        auto end_time3 = std::chrono::high_resolution_clock::now();
-        auto duration3 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time3 - start_time3).count();
-        std::cout << "Hough transform (OpenMP): " << duration3 << " ns" << std::endl;
-
+    
         // Aggregate local spaces of each thread into the global Hough space
         for (int t = 0; t < omp_get_max_threads(); ++t) {
             for (int i = 0; i < n_rho * 181; ++i) {
                 hough_space[i] += local_hough_spaces[t][i];
             }
         }
+        auto end_time3 = std::chrono::high_resolution_clock::now();
+        auto duration3 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time3 - start_time3).count();
+        std::cout << "Hough transform (OpenMP): " << duration3 << " ns" << std::endl;
 
+        
+        auto start_time7 = std::chrono::high_resolution_clock::now();        
         // Find the maximum value
         int max_value = -1;
         int max_index = -1;
+        // Prepare local maximums as pairs (value, index) for each thread
+        std::vector<std::pair<int, int>> local_max_pairs(omp_get_max_threads(), std::make_pair(-1, -1));
 
         #pragma omp parallel
         {
+            int thread_id = omp_get_thread_num();
             int local_max = -1;
             int local_index = -1;
 
-            // Each thread finds the maximum in its assigned part
+            // Each thread finds the maximum value in its assigned range
             #pragma omp for nowait
-            for (int i = 0; i < hough_space.size(); ++i) {
-                if (hough_space[i] > local_max) {
-                    local_max = hough_space[i];
+            for (int i = 0; i < host_hough_space.size(); ++i) {
+                if (host_hough_space[i] > local_max) {
+                    local_max = host_hough_space[i];
                     local_index = i;
                 }
             }
 
-            // Update the global maximum value and index in a critical section
-            #pragma omp critical
-            {
-                if (local_max > max_value) {
-                    max_value = local_max;
-                    max_index = local_index;
-                }
-                else if (local_max == max_value && local_index < max_index) {
-                    max_index = local_index;
-                }
+            // Store the local max value and index as a pair for this thread
+            local_max_pairs[thread_id] = std::make_pair(local_max, local_index);
+        }
+
+        // Final aggregation to find the overall maximum and index
+        for (const auto& local_pair : local_max_pairs) {
+            if (local_pair.first > max_value) {
+                max_value = local_pair.first;
+                max_index = local_pair.second;
+            }
+            // If the maximum values are the same, keep the smaller index
+            else if (local_pair.first == max_value && local_pair.second < max_index) {
+                max_index = local_pair.second;
             }
         }
 
         int max_theta = max_index / n_rho;
-        int max_rho = max_index % n_rho - static_cast<int>((n_rho - 1) / 2);
-        std::cout << "Max theta: " << max_theta << ", Max rho: " << max_rho << std::endl;
+        int max_rho   = max_index % n_rho - static_cast<int>((n_rho-1)/2);
+        auto end_time7 = std::chrono::high_resolution_clock::now();
+        auto duration7 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time7 - start_time7).count();
+        std::cout << "max_element3: " << duration7 << " ns" << std::endl;
+        std::cout << "max_index, " << max_index << std::endl;
 
         // Event selection
         int max_diff = 4;
